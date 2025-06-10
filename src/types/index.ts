@@ -23,18 +23,32 @@ export interface Website {
   updatedAt: Date;
 }
 
+export interface CallLog {
+  id: string;
+  leadId: string;
+  outcome: 'no_answer' | 'never_call_back' | 'follow_up_24h' | 'follow_up_72h' | 'follow_up_next_week' | 'follow_up_next_month' | 'follow_up_3_months' | 'interested' | 'not_interested';
+  notes: string;
+  callDate: Date;
+  nextFollowUp?: Date;
+  duration?: number; // in seconds
+}
+
 export interface Lead {
   id: string;
-  websiteId: string;
+  websiteId?: string;
   clientId?: string;
   name: string;
-  email: string;
+  email?: string;
   phone: string;
-  source: 'form' | 'call';
-  status: 'new' | 'contacted' | 'qualified' | 'converted';
-  value: number;
-  createdAt: Date;
-  updatedAt: Date;
+  source?: 'form' | 'call';
+  status?: 'new' | 'contacted' | 'qualified' | 'converted';
+  value?: number;
+  reviews: number;
+  website: string;
+  contacted: boolean;
+  callLogs: CallLog[];
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface PhoneNumber {
@@ -254,15 +268,6 @@ export interface SerpInsights {
   raw: any;
 }
 
-export interface Lead {
-  id: string;
-  name: string;
-  reviews: number;
-  phone: string;
-  website: string;
-  contacted: boolean;
-}
-
 export interface AreaData {
   id: string;
   name: string;
@@ -294,4 +299,5 @@ export interface LeadContextType {
   sortDirection: SortDirection;
   setSortDirection: React.Dispatch<React.SetStateAction<SortDirection>>;
   handleSort: (field: SortField) => void;
+  addCallLog: (leadId: string, callLog: Omit<CallLog, 'id' | 'leadId' | 'callDate'>) => void;
 }

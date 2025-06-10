@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
-import { Lead, LeadContextType, Filters, AreaData, SortField, SortDirection } from '../types';
+import { Lead, LeadContextType, Filters, AreaData, SortField, SortDirection, CallLog } from '../types';
 import { areaData } from '../data/areas';
 
 const LeadContext = createContext<LeadContextType | undefined>(undefined);
@@ -78,6 +78,55 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lead.id === id ? { ...lead, contacted: !lead.contacted } : lead
       )
     );
+  };
+
+  // Add call log function
+  const addCallLog = (leadId: string, callLogData: Omit<CallLog, 'id' | 'leadId' | 'callDate'>) => {
+    const newCallLog: CallLog = {
+      id: `call_${Date.now()}`,
+      leadId,
+      callDate: new Date(),
+      ...callLogData,
+      nextFollowUp: callLogData.nextFollowUp || calculateNextFollowUp(callLogData.outcome)
+    };
+
+    setLeads(prevLeads => 
+      prevLeads.map(lead => 
+        lead.id === leadId 
+          ? { 
+              ...lead, 
+              callLogs: [...(lead.callLogs || []), newCallLog],
+              contacted: true // Mark as contacted when a call is logged
+            }
+          : lead
+      )
+    );
+  };
+
+  // Helper function to calculate next follow-up date based on outcome
+  const calculateNextFollowUp = (outcome: CallLog['outcome']): Date | undefined => {
+    const now = new Date();
+    const nextDate = new Date(now);
+
+    switch (outcome) {
+      case 'follow_up_24h':
+        nextDate.setDate(now.getDate() + 1);
+        return nextDate;
+      case 'follow_up_72h':
+        nextDate.setDate(now.getDate() + 3);
+        return nextDate;
+      case 'follow_up_next_week':
+        nextDate.setDate(now.getDate() + 7);
+        return nextDate;
+      case 'follow_up_next_month':
+        nextDate.setMonth(now.getMonth() + 1);
+        return nextDate;
+      case 'follow_up_3_months':
+        nextDate.setMonth(now.getMonth() + 3);
+        return nextDate;
+      default:
+        return undefined;
+    }
   };
 
   // Clear cache for current area
@@ -174,7 +223,8 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSortField,
       sortDirection,
       setSortDirection,
-      handleSort
+      handleSort,
+      addCallLog
     }}>
       {children}
     </LeadContext.Provider>
