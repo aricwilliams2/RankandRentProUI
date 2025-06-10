@@ -33,43 +33,57 @@ const LeadsList: React.FC = () => {
   const renderSortIndicator = (field: SortField) => {
     if (sortField !== field) return null;
 
-    return sortDirection === "asc" ? <ChevronUp className="w-4 h-4 ml-1 inline" /> : <ChevronDown className="w-4 h-4 ml-1 inline" />;
+    return sortDirection === "asc" ? <ChevronUp className="w-3 h-3 sm:w-4 sm:h-4 ml-1 inline" /> : <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 ml-1 inline" />;
   };
 
   if (filteredLeads.length === 0) {
     return (
-      <div className="w-full bg-white rounded-lg shadow-md p-8 text-center">
-        <p className="text-gray-600 text-lg">No leads found matching your criteria.</p>
-        <p className="text-gray-500 mt-2">Try adjusting your filters.</p>
+      <div className="w-full bg-white rounded-lg shadow-md p-6 sm:p-8 text-center">
+        <p className="text-gray-600 text-base sm:text-lg">No leads found matching your criteria.</p>
+        <p className="text-gray-500 mt-2 text-sm sm:text-base">Try adjusting your filters.</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full overflow-x-auto bg-white rounded-lg shadow-md">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-50 border-b border-gray-200">
-            <th className="text-left p-3 sm:p-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("name")}>
-              <div className="flex items-center">Business {renderSortIndicator("name")}</div>
-            </th>
-            <th className="text-left p-3 sm:p-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("reviews")}>
-              <div className="flex items-center">Reviews {renderSortIndicator("reviews")}</div>
-            </th>
-            <th className="text-left p-3 sm:p-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("phone")}>
-              <div className="flex items-center">Phone {renderSortIndicator("phone")}</div>
-            </th>
-            <th className="text-left p-3 sm:p-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-100" onClick={() => handleSort("website")}>
-              <div className="flex items-center">Website {renderSortIndicator("website")}</div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="w-full bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Mobile Card View for smaller screens */}
+      <div className="block sm:hidden">
+        <div className="divide-y divide-gray-200">
           {filteredLeads.map((lead, index) => (
-            <LeadItem key={lead.id} lead={lead} index={index} ref={(el) => (rowRefs.current[index] = el)} />
+            <div key={lead.id} className="p-4 hover:bg-blue-50 transition-colors">
+              <LeadItem lead={lead} index={index} />
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
+
+      {/* Desktop Table View for larger screens */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200">
+              <th className="text-left p-3 lg:p-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => handleSort("name")}>
+                <div className="flex items-center">Business {renderSortIndicator("name")}</div>
+              </th>
+              <th className="text-left p-3 lg:p-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => handleSort("reviews")}>
+                <div className="flex items-center">Reviews {renderSortIndicator("reviews")}</div>
+              </th>
+              <th className="text-left p-3 lg:p-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => handleSort("phone")}>
+                <div className="flex items-center">Phone {renderSortIndicator("phone")}</div>
+              </th>
+              <th className="text-left p-3 lg:p-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => handleSort("website")}>
+                <div className="flex items-center">Website {renderSortIndicator("website")}</div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredLeads.map((lead, index) => (
+              <LeadItem key={lead.id} lead={lead} index={index} ref={(el) => (rowRefs.current[index] = el)} />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
