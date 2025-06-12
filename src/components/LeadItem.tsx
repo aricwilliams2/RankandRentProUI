@@ -1,5 +1,4 @@
-import React, { forwardRef, useState, useCallback } from "react";
-import { createPortal } from "react-dom";
+import React, { forwardRef, useState } from "react";
 import { ExternalLink, Phone, Check, MessageSquare, Calendar, X, ChevronDown, ChevronUp, Clock, AlertTriangle, Edit } from "lucide-react";
 import StarRating from "./StarRating";
 import { Lead, CallLog } from "../types";
@@ -17,17 +16,17 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
   const [callOutcome, setCallOutcome] = useState<CallLog['outcome']>('follow_up_1_day');
   const [callNotes, setCallNotes] = useState('');
 
-  const handleCallLogClick = useCallback((e: React.MouseEvent) => {
+  const handleCallLogClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setLastCalledIndex(index);
     setShowCallDialog(true);
-  }, [index, setLastCalledIndex]);
+  };
 
-  const handleRowClick = useCallback(() => {
+  const handleRowClick = () => {
     toggleContactStatus(lead.id);
-  }, [lead.id, toggleContactStatus]);
+  };
 
-  const handleSubmitCallLog = useCallback(() => {
+  const handleSubmitCallLog = () => {
     if (callNotes.trim()) {
       addCallLog(lead.id, {
         outcome: callOutcome,
@@ -38,21 +37,13 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
       setCallOutcome('follow_up_1_day');
       setShowCallDialog(false);
     }
-  }, [lead.id, callOutcome, callNotes, addCallLog]);
+  };
 
-  const handleCloseDialog = useCallback(() => {
+  const handleCloseDialog = () => {
     setShowCallDialog(false);
     setCallNotes('');
     setCallOutcome('follow_up_1_day');
-  }, []);
-
-  const handleNotesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setCallNotes(e.target.value);
-  }, []);
-
-  const handleOutcomeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setCallOutcome(e.target.value as CallLog['outcome']);
-  }, []);
+  };
 
   const getOutcomeLabel = (outcome: CallLog['outcome']) => {
     const labels = {
@@ -93,78 +84,6 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
 
   const nextFollowUp = getNextFollowUp();
   const isFollowUpDue = nextFollowUp && nextFollowUp <= new Date();
-
-  // Call Logging Dialog Component - Stable reference
-  const CallDialog = useCallback(() => {
-    if (!showCallDialog) return null;
-
-    return createPortal(
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleCloseDialog}>
-        <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Log Call - {lead.name}</h3>
-            <button
-              onClick={handleCloseDialog}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Follow-up Schedule
-              </label>
-              <select
-                value={callOutcome}
-                onChange={handleOutcomeChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="follow_up_1_day">Follow up in 1 day</option>
-                <option value="follow_up_72_hours">Follow up in 72 hours</option>
-                <option value="follow_up_next_week">Follow up next week</option>
-                <option value="follow_up_next_month">Follow up next month</option>
-                <option value="follow_up_3_months">Follow up in 3 months</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Call Notes *
-              </label>
-              <textarea
-                value={callNotes}
-                onChange={handleNotesChange}
-                placeholder="Enter notes about the call..."
-                rows={4}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-                autoFocus
-              />
-            </div>
-          </div>
-          
-          <div className="flex gap-2 mt-6">
-            <button
-              onClick={handleCloseDialog}
-              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmitCallLog}
-              className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-              disabled={!callNotes.trim()}
-            >
-              Save Notes
-            </button>
-          </div>
-        </div>
-      </div>,
-      document.body
-    );
-  }, [showCallDialog, lead.name, callOutcome, callNotes, handleCloseDialog, handleOutcomeChange, handleNotesChange, handleSubmitCallLog]);
 
   // Mobile card layout
   const MobileCard = () => (
@@ -408,7 +327,74 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
   return (
     <>
       {isMobile ? <MobileCard /> : <TableRow />}
-      <CallDialog />
+      
+      {/* Call Logging Dialog - Simplified and separate */}
+      {showCallDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleCloseDialog}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Log Call - {lead.name}</h3>
+              <button
+                onClick={handleCloseDialog}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Follow-up Schedule
+                </label>
+                <select
+                  value={callOutcome}
+                  onChange={(e) => setCallOutcome(e.target.value as CallLog['outcome'])}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="follow_up_1_day">Follow up in 1 day</option>
+                  <option value="follow_up_72_hours">Follow up in 72 hours</option>
+                  <option value="follow_up_next_week">Follow up next week</option>
+                  <option value="follow_up_next_month">Follow up next month</option>
+                  <option value="follow_up_3_months">Follow up in 3 months</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Call Notes *
+                </label>
+                <textarea
+                  value={callNotes}
+                  onChange={(e) => setCallNotes(e.target.value)}
+                  placeholder="Enter notes about the call..."
+                  rows={4}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  style={{ direction: 'ltr' }}
+                  dir="ltr"
+                  autoFocus
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={handleCloseDialog}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitCallLog}
+                className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                disabled={!callNotes.trim()}
+              >
+                Save Notes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 });
