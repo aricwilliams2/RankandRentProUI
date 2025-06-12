@@ -1,5 +1,5 @@
 import React, { forwardRef, useState } from "react";
-import { ExternalLink, Phone, Check, MessageSquare, Calendar, X, ChevronDown, ChevronUp, Clock, AlertTriangle, Edit } from "lucide-react";
+import { ExternalLink, Phone, Check, MessageSquare, Calendar, X, ChevronDown, ChevronUp, Clock, AlertTriangle, Edit, Save, MoreHorizontal } from "lucide-react";
 import StarRating from "./StarRating";
 import { Lead, CallLog } from "../types";
 import { useLeadContext } from "../contexts/LeadContext";
@@ -10,9 +10,13 @@ interface LeadItemProps {
 }
 
 const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }, ref) => {
-  const { setLastCalledIndex, toggleContactStatus, addCallLog } = useLeadContext();
+  const { setLastCalledIndex, toggleContactStatus, addCallLog, updateCallLog } = useLeadContext();
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [showCallHistory, setShowCallHistory] = useState(false);
+  const [showAllLogs, setShowAllLogs] = useState(false);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [editNotes, setEditNotes] = useState('');
+  const [editOutcome, setEditOutcome] = useState<CallLog['outcome']>('follow_up_1_day');
   const [callOutcome, setCallOutcome] = useState<CallLog['outcome']>('follow_up_1_day');
   const [callNotes, setCallNotes] = useState('');
 
@@ -43,6 +47,30 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
     setShowCallDialog(false);
     setCallNotes('');
     setCallOutcome('follow_up_1_day');
+  };
+
+  const handleEditLog = (log: CallLog) => {
+    setEditingLogId(log.id);
+    setEditNotes(log.notes);
+    setEditOutcome(log.outcome);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingLogId && editNotes.trim()) {
+      updateCallLog(lead.id, editingLogId, {
+        outcome: editOutcome,
+        notes: editNotes.trim()
+      });
+      setEditingLogId(null);
+      setEditNotes('');
+      setEditOutcome('follow_up_1_day');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLogId(null);
+    setEditNotes('');
+    setEditOutcome('follow_up_1_day');
   };
 
   const getOutcomeLabel = (outcome: CallLog['outcome']) => {
@@ -84,6 +112,12 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
 
   const nextFollowUp = getNextFollowUp();
   const isFollowUpDue = nextFollowUp && nextFollowUp <= new Date();
+
+  const sortedLogs = lead.callLogs ? 
+    [...lead.callLogs].sort((a, b) => new Date(b.callDate).getTime() - new Date(a.callDate).getTime()) 
+    : [];
+
+  const displayedLogs = showAllLogs ? sortedLogs : sortedLogs.slice(0, 3);
 
   // Mobile card layout
   const MobileCard = () => (
@@ -168,24 +202,82 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
       {showCallHistory && lead.callLogs && lead.callLogs.length > 0 && (
         <div className="mt-3 pt-3 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
           <div className="space-y-2">
-            {lead.callLogs
-              .sort((a, b) => new Date(b.callDate).getTime() - new Date(a.callDate).getTime())
-              .slice(0, 3)
-              .map((log) => (
-                <div key={log.id} className="text-xs bg-gray-50 p-2 rounded">
-                  <div className="flex justify-between items-start mb-1">
+            {displayedLogs.map((log) => (
+              <div key={log.id} className="text-xs bg-gray-50 p-2 rounded">
+                <div className="flex justify-between items-start mb-1">
+                  <div className="flex items-center gap-2">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${getOutcomeColor(log.outcome)}`}>
                       {getOutcomeLabel(log.outcome)}
                     </span>
-                    <span className="text-gray-500">
-                      {new Date(log.callDate).toLocaleDateString()}
-                    </span>
+                    <button
+                      onClick={() => handleEditLog(log)}
+                      className="text-gray-400 hover:text-blue-600 transition-colors"
+                      title="Edit this log"
+                    >
+                      <Edit className="w-3 h-3" />
+                    </button>
                   </div>
-                  {log.notes && (
-                    <p className="text-gray-700 mt-1">{log.notes}</p>
-                  )}
+                  <span className="text-gray-500">
+                    {new Date(log.callDate).toLocaleDateString()}
+                  </span>
                 </div>
-              ))}
+                {editingLogId === log.id ? (
+                  <div className="space-y-2 mt-2">
+                    <select
+                      value={editOutcome}
+                      onChange={(e) => setEditOutcome(e.target.value as CallLog['outcome'])}
+                      className="w-full p-1 text-xs border border-gray-300 rounded"
+                    >
+                      <option value="follow_up_1_day">Follow up in 1 day</option>
+                      <option value="follow_up_72_hours">Follow up in 72 hours</option>
+                      <option value="follow_up_next_week">Follow up next week</option>
+                      <option value="follow_up_next_month">Follow up next month</option>
+                      <option value="follow_up_3_months">Follow up in 3 months</option>
+                    </select>
+                    <textarea
+                      value={editNotes}
+                      onChange={(e) => setEditNotes(e.target.value)}
+                      className="w-full p-1 text-xs border border-gray-300 rounded resize-none"
+                      rows={3}
+                      style={{ direction: 'ltr' }}
+                      dir="ltr"
+                    />
+                    <div className="flex gap-1">
+                      <button
+                        onClick={handleSaveEdit}
+                        className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                      >
+                        <Save className="w-3 h-3" />
+                        Save
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="flex items-center gap-1 px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
+                      >
+                        <X className="w-3 h-3" />
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  log.notes && <p className="text-gray-700 mt-1">{log.notes}</p>
+                )}
+              </div>
+            ))}
+            
+            {/* Show More/Less Button */}
+            {sortedLogs.length > 3 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAllLogs(!showAllLogs);
+                }}
+                className="flex items-center text-blue-600 hover:text-blue-800 transition-colors text-xs mt-2"
+              >
+                <MoreHorizontal className="w-3 h-3 mr-1" />
+                {showAllLogs ? `Show Less` : `Show All ${sortedLogs.length} Logs`}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -288,32 +380,91 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
         <tr className="bg-gray-50">
           <td colSpan={6} className="p-3 lg:p-4">
             <div className="space-y-2">
-              <h4 className="font-medium text-sm text-gray-700">Call History</h4>
-              {lead.callLogs
-                .sort((a, b) => new Date(b.callDate).getTime() - new Date(a.callDate).getTime())
-                .map((log) => (
-                  <div key={log.id} className="flex justify-between items-start bg-white p-3 rounded border text-sm">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${getOutcomeColor(log.outcome)}`}>
-                          {getOutcomeLabel(log.outcome)}
-                        </span>
-                        <span className="text-gray-500 text-xs">
-                          {new Date(log.callDate).toLocaleString()}
-                        </span>
-                      </div>
-                      {log.notes && (
-                        <p className="text-gray-700 mt-1">{log.notes}</p>
-                      )}
-                      {log.nextFollowUp && (
-                        <div className="flex items-center text-blue-600 text-xs mt-1">
-                          <Calendar className="w-3 h-3 mr-1" />
-                          Follow up: {new Date(log.nextFollowUp).toLocaleString()}
-                        </div>
-                      )}
+              <div className="flex justify-between items-center">
+                <h4 className="font-medium text-sm text-gray-700">Call History</h4>
+                {sortedLogs.length > 3 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowAllLogs(!showAllLogs);
+                    }}
+                    className="flex items-center text-blue-600 hover:text-blue-800 transition-colors text-sm"
+                  >
+                    <MoreHorizontal className="w-4 h-4 mr-1" />
+                    {showAllLogs ? `Show Less` : `Show All ${sortedLogs.length} Logs`}
+                  </button>
+                )}
+              </div>
+              {displayedLogs.map((log) => (
+                <div key={log.id} className="flex justify-between items-start bg-white p-3 rounded border text-sm">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getOutcomeColor(log.outcome)}`}>
+                        {getOutcomeLabel(log.outcome)}
+                      </span>
+                      <span className="text-gray-500 text-xs">
+                        {new Date(log.callDate).toLocaleString()}
+                      </span>
+                      <button
+                        onClick={() => handleEditLog(log)}
+                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                        title="Edit this log"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
                     </div>
+                    {editingLogId === log.id ? (
+                      <div className="space-y-2 mt-2">
+                        <select
+                          value={editOutcome}
+                          onChange={(e) => setEditOutcome(e.target.value as CallLog['outcome'])}
+                          className="w-full p-2 border border-gray-300 rounded"
+                        >
+                          <option value="follow_up_1_day">Follow up in 1 day</option>
+                          <option value="follow_up_72_hours">Follow up in 72 hours</option>
+                          <option value="follow_up_next_week">Follow up next week</option>
+                          <option value="follow_up_next_month">Follow up next month</option>
+                          <option value="follow_up_3_months">Follow up in 3 months</option>
+                        </select>
+                        <textarea
+                          value={editNotes}
+                          onChange={(e) => setEditNotes(e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded resize-none"
+                          rows={3}
+                          style={{ direction: 'ltr' }}
+                          dir="ltr"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSaveEdit}
+                            className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                          >
+                            <Save className="w-4 h-4" />
+                            Save
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="flex items-center gap-1 px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                          >
+                            <X className="w-4 h-4" />
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {log.notes && <p className="text-gray-700 mt-1">{log.notes}</p>}
+                        {log.nextFollowUp && (
+                          <div className="flex items-center text-blue-600 text-xs mt-1">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            Follow up: {new Date(log.nextFollowUp).toLocaleString()}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-                ))}
+                </div>
+              ))}
             </div>
           </td>
         </tr>

@@ -103,6 +103,28 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
+  // Update call log function
+  const updateCallLog = (leadId: string, callLogId: string, updateData: Partial<Pick<CallLog, 'outcome' | 'notes'>>) => {
+    setLeads(prevLeads => 
+      prevLeads.map(lead => 
+        lead.id === leadId 
+          ? { 
+              ...lead, 
+              callLogs: lead.callLogs?.map(log => 
+                log.id === callLogId 
+                  ? { 
+                      ...log, 
+                      ...updateData,
+                      nextFollowUp: updateData.outcome ? calculateNextFollowUp(updateData.outcome) : log.nextFollowUp
+                    }
+                  : log
+              ) || []
+            }
+          : lead
+      )
+    );
+  };
+
   // Helper function to calculate next follow-up date based on outcome
   const calculateNextFollowUp = (outcome: CallLog['outcome']): Date | undefined => {
     const now = new Date();
@@ -224,7 +246,8 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sortDirection,
       setSortDirection,
       handleSort,
-      addCallLog
+      addCallLog,
+      updateCallLog
     }}>
       {children}
     </LeadContext.Provider>

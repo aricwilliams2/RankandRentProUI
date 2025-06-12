@@ -300,4 +300,5 @@ export interface LeadContextType {
   setSortDirection: React.Dispatch<React.SetStateAction<SortDirection>>;
   handleSort: (field: SortField) => void;
   addCallLog: (leadId: string, callLog: Omit<CallLog, 'id' | 'leadId' | 'callDate'>) => void;
+  updateCallLog: (leadId: string, callLogId: string, updateData: Partial<Pick<CallLog, 'outcome' | 'notes'>>) => void;
 }
