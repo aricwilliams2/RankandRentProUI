@@ -8,8 +8,7 @@ export const hunstvilleLeads: Lead[] = [
     phone: "tel:+12563630347",
     website: "https://twomenandatruck.com/movers/al/huntsville?utm_source=google&utm_medium=organic&utm_campaign=gmb",
     contacted: false,
-    notes: "High-volume moving company. Good potential client.",
-    followUpAt: new Date('2025-01-20T10:00:00'),
+    notes: "High-volume moving company. Good potential client. Follow up next week.",
     callLogs: []
   },
   {
@@ -19,7 +18,7 @@ export const hunstvilleLeads: Lead[] = [
     phone: "",
     website: "http://dirtydeedsservicesllc.com/",
     contacted: false,
-    notes: "Small operation. No phone number listed.",
+    notes: "Small operation. No phone number listed. Need to find contact info.",
     callLogs: []
   },
   {
@@ -29,8 +28,7 @@ export const hunstvilleLeads: Lead[] = [
     phone: "tel:+12562589581",
     website: "nan",
     contacted: true,
-    notes: "Called and left message. Follow up needed.",
-    followUpAt: new Date('2025-01-18T14:00:00'),
+    notes: "Called and left message. Owner interested in website rental. Follow up Monday morning.",
     callLogs: [
       {
         id: "call_001",
@@ -109,8 +107,7 @@ export const hunstvilleLeads: Lead[] = [
     phone: "tel:+12567972336",
     website: "https://greenbroservices.com/",
     contacted: false,
-    notes: "Green services focus. Good positioning.",
-    followUpAt: new Date('2025-01-22T11:00:00'),
+    notes: "Green services focus. Good positioning. Call next Thursday.",
     callLogs: []
   },
   {
@@ -150,8 +147,7 @@ export const hunstvilleLeads: Lead[] = [
     phone: "tel:+12565270607",
     website: "https://www.hubertree.com/",
     contacted: true,
-    notes: "Tree service expanding into junk removal. Very interested!",
-    followUpAt: new Date('2025-01-19T10:00:00'),
+    notes: "Tree service expanding into junk removal. Very interested! Follow up next week for pricing discussion.",
     callLogs: [
       {
         id: "call_002",

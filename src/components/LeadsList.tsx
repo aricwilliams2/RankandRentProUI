@@ -79,9 +79,6 @@ const LeadsList: React.FC = () => {
                 Notes
               </th>
               <th className="text-left p-3 lg:p-4 font-semibold text-gray-700 text-sm">
-                Follow-up
-              </th>
-              <th className="text-left p-3 lg:p-4 font-semibold text-gray-700 text-sm">
                 Call Log
               </th>
               <th className="text-left p-3 lg:p-4 font-semibold text-gray-700 text-sm">

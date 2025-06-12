@@ -12,7 +12,7 @@ const initialFilters: Filters = {
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
 // Transform lead data for API (frontend -> backend format)
-const transformLeadForAPI = (lead: Lead) => {
+const transformLeadForAPI = (lead: Lead, followUpAt?: string) => {
   return {
     id: lead.id,
     name: lead.name,
@@ -20,7 +20,7 @@ const transformLeadForAPI = (lead: Lead) => {
     phone: lead.phone,
     website: lead.website,
     contacted: lead.contacted ? 1 : 0,
-    follow_up_at: lead.followUpAt ? lead.followUpAt.toISOString() : null,
+    follow_up_at: followUpAt || null,
     notes: lead.notes || null,
     created_at: lead.createdAt?.toISOString() || new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -28,9 +28,9 @@ const transformLeadForAPI = (lead: Lead) => {
 };
 
 // API call to update lead
-const updateLeadAPI = async (lead: Lead) => {
+const updateLeadAPI = async (lead: Lead, followUpAt?: string) => {
   try {
-    const leadData = transformLeadForAPI(lead);
+    const leadData = transformLeadForAPI(lead, followUpAt);
     const response = await fetch(`${API_BASE_URL}/leads/${lead.id}`, {
       method: 'PUT',
       headers: {
@@ -66,7 +66,6 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Convert date strings back to Date objects
       return parsedLeads.map((lead: any) => ({
         ...lead,
-        followUpAt: lead.followUpAt ? new Date(lead.followUpAt) : undefined,
         callLogs: lead.callLogs?.map((log: any) => ({
           ...log,
           callDate: new Date(log.callDate),
@@ -97,7 +96,6 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Convert date strings back to Date objects
       const leadsWithDates = parsedLeads.map((lead: any) => ({
         ...lead,
-        followUpAt: lead.followUpAt ? new Date(lead.followUpAt) : undefined,
         callLogs: lead.callLogs?.map((log: any) => ({
           ...log,
           callDate: new Date(log.callDate),
@@ -158,8 +156,8 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Update lead notes function
-  const updateLeadNotes = async (leadId: string, notes: string) => {
+  // Update lead notes function (combines notes and follow-up)
+  const updateLeadNotes = async (leadId: string, notes: string, followUpAt?: string) => {
     const lead = leads.find(l => l.id === leadId);
     if (!lead) return;
 
@@ -167,7 +165,7 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       // Update API first
-      await updateLeadAPI(updatedLead);
+      await updateLeadAPI(updatedLead, followUpAt);
       
       // Update local state on success
       setLeads(prevLeads => 
@@ -177,29 +175,6 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
     } catch (error) {
       console.error('Failed to update lead notes:', error);
-      // You might want to show a toast notification here
-    }
-  };
-
-  // Update follow-up date function
-  const updateFollowUpDate = async (leadId: string, followUpAt: Date | null) => {
-    const lead = leads.find(l => l.id === leadId);
-    if (!lead) return;
-
-    const updatedLead = { ...lead, followUpAt };
-    
-    try {
-      // Update API first
-      await updateLeadAPI(updatedLead);
-      
-      // Update local state on success
-      setLeads(prevLeads => 
-        prevLeads.map(lead => 
-          lead.id === leadId ? updatedLead : lead
-        )
-      );
-    } catch (error) {
-      console.error('Failed to update follow-up date:', error);
       // You might want to show a toast notification here
     }
   };
@@ -396,8 +371,7 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       handleSort,
       addCallLog,
       updateCallLog,
-      updateLeadNotes,
-      updateFollowUpDate
+      updateLeadNotes
     }}>
       {children}
     </LeadContext.Provider>

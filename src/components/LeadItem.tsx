@@ -1,5 +1,5 @@
 import React, { forwardRef, useState } from "react";
-import { ExternalLink, Phone, Check, MessageSquare, Calendar, X, ChevronDown, ChevronUp, Clock, AlertTriangle, Edit, Save, MoreHorizontal, FileText, Bell, CalendarClock } from "lucide-react";
+import { ExternalLink, Phone, Check, MessageSquare, Calendar, X, ChevronDown, ChevronUp, Clock, AlertTriangle, Edit, Save, MoreHorizontal, FileText, StickyNote } from "lucide-react";
 import StarRating from "./StarRating";
 import { Lead, CallLog } from "../types";
 import { useLeadContext } from "../contexts/LeadContext";
@@ -10,7 +10,7 @@ interface LeadItemProps {
 }
 
 const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }, ref) => {
-  const { setLastCalledIndex, toggleContactStatus, addCallLog, updateCallLog, updateLeadNotes, updateFollowUpDate } = useLeadContext();
+  const { setLastCalledIndex, toggleContactStatus, addCallLog, updateCallLog, updateLeadNotes } = useLeadContext();
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [showAllLogs, setShowAllLogs] = useState(false);
@@ -19,12 +19,11 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
   const [editOutcome, setEditOutcome] = useState<CallLog['outcome']>('follow_up_1_day');
   const [callOutcome, setCallOutcome] = useState<CallLog['outcome']>('follow_up_1_day');
   const [callNotes, setCallNotes] = useState('');
-  const [editingLeadNotes, setEditingLeadNotes] = useState(false);
-  const [leadNotesValue, setLeadNotesValue] = useState(lead.notes || '');
-  const [editingFollowUp, setEditingFollowUp] = useState(false);
-  const [followUpValue, setFollowUpValue] = useState(
-    lead.followUpAt ? lead.followUpAt.toISOString().slice(0, 16) : ''
-  );
+  
+  // Combined notes and follow-up dialog
+  const [showNotesDialog, setShowNotesDialog] = useState(false);
+  const [notesValue, setNotesValue] = useState(lead.notes || '');
+  const [followUpValue, setFollowUpValue] = useState('');
 
   const handleCallLogClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -34,6 +33,24 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
 
   const handleRowClick = () => {
     toggleContactStatus(lead.id);
+  };
+
+  const handleNotesDialogOpen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNotesValue(lead.notes || '');
+    setFollowUpValue('');
+    setShowNotesDialog(true);
+  };
+
+  const handleNotesDialogClose = () => {
+    setShowNotesDialog(false);
+    setNotesValue(lead.notes || '');
+    setFollowUpValue('');
+  };
+
+  const handleSaveNotes = () => {
+    updateLeadNotes(lead.id, notesValue, followUpValue || undefined);
+    setShowNotesDialog(false);
   };
 
   const handleSubmitCallLog = () => {
@@ -79,27 +96,6 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
     setEditOutcome('follow_up_1_day');
   };
 
-  const handleSaveLeadNotes = () => {
-    updateLeadNotes(lead.id, leadNotesValue);
-    setEditingLeadNotes(false);
-  };
-
-  const handleCancelLeadNotes = () => {
-    setLeadNotesValue(lead.notes || '');
-    setEditingLeadNotes(false);
-  };
-
-  const handleSaveFollowUp = () => {
-    const date = followUpValue ? new Date(followUpValue) : null;
-    updateFollowUpDate(lead.id, date);
-    setEditingFollowUp(false);
-  };
-
-  const handleCancelFollowUp = () => {
-    setFollowUpValue(lead.followUpAt ? lead.followUpAt.toISOString().slice(0, 16) : '');
-    setEditingFollowUp(false);
-  };
-
   const getOutcomeLabel = (outcome: CallLog['outcome']) => {
     const labels = {
       follow_up_1_day: 'Follow up in 1 day',
@@ -138,7 +134,6 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
   };
 
   const nextFollowUp = getNextFollowUp();
-  const isFollowUpDue = lead.followUpAt && lead.followUpAt <= new Date();
   const isCallFollowUpDue = nextFollowUp && nextFollowUp <= new Date();
 
   const sortedLogs = lead.callLogs ? 
@@ -150,7 +145,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
   // Mobile card layout
   const MobileCard = () => (
     <div 
-      className={`cursor-pointer transition-colors ${lead.contacted ? "bg-green-50/50" : "bg-white"} ${isFollowUpDue || isCallFollowUpDue ? "border-l-4 border-orange-400" : ""}`}
+      className={`cursor-pointer transition-colors ${lead.contacted ? "bg-green-50/50" : "bg-white"} ${isCallFollowUpDue ? "border-l-4 border-orange-400" : ""}`}
       onClick={handleRowClick}
     >
       <div className="flex items-start justify-between mb-3">
@@ -161,7 +156,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
           <div className="min-w-0 flex-1">
             <div className="font-medium text-sm truncate flex items-center gap-2">
               {lead.name}
-              {(isFollowUpDue || isCallFollowUpDue) && <AlertTriangle className="w-4 h-4 text-orange-500" />}
+              {isCallFollowUpDue && <AlertTriangle className="w-4 h-4 text-orange-500" />}
             </div>
             <div className="mt-1">
               <StarRating reviews={lead.reviews} />
@@ -204,105 +199,22 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
           <span className="border-b border-blue-300 hover:border-blue-600 truncate">Visit Website</span>
         </a>
 
-        {/* Lead Notes */}
+        {/* Notes Section */}
         <div className="text-sm" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-2 mb-1">
-            <FileText className="w-4 h-4 text-gray-500" />
+            <StickyNote className="w-4 h-4 text-gray-500" />
             <span className="text-gray-600 font-medium">Notes:</span>
             <button
-              onClick={() => setEditingLeadNotes(true)}
+              onClick={handleNotesDialogOpen}
               className="text-gray-400 hover:text-blue-600 transition-colors"
               title="Edit notes"
             >
               <Edit className="w-3 h-3" />
             </button>
           </div>
-          {editingLeadNotes ? (
-            <div className="space-y-2">
-              <textarea
-                value={leadNotesValue}
-                onChange={(e) => setLeadNotesValue(e.target.value)}
-                className="w-full p-2 text-xs border border-gray-300 rounded resize-none"
-                rows={3}
-                placeholder="Add notes about this lead..."
-                style={{ direction: 'ltr' }}
-                dir="ltr"
-              />
-              <div className="flex gap-1">
-                <button
-                  onClick={handleSaveLeadNotes}
-                  className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                >
-                  <Save className="w-3 h-3" />
-                  Save
-                </button>
-                <button
-                  onClick={handleCancelLeadNotes}
-                  className="flex items-center gap-1 px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
-                >
-                  <X className="w-3 h-3" />
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded min-h-[2rem]">
-              {lead.notes || "No notes added yet..."}
-            </p>
-          )}
-        </div>
-
-        {/* Follow-up Date */}
-        <div className="text-sm" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-2 mb-1">
-            <CalendarClock className="w-4 h-4 text-gray-500" />
-            <span className="text-gray-600 font-medium">Follow-up:</span>
-            <button
-              onClick={() => setEditingFollowUp(true)}
-              className="text-gray-400 hover:text-blue-600 transition-colors"
-              title="Edit follow-up date"
-            >
-              <Edit className="w-3 h-3" />
-            </button>
-          </div>
-          {editingFollowUp ? (
-            <div className="space-y-2">
-              <input
-                type="datetime-local"
-                value={followUpValue}
-                onChange={(e) => setFollowUpValue(e.target.value)}
-                className="w-full p-2 text-xs border border-gray-300 rounded"
-              />
-              <div className="flex gap-1">
-                <button
-                  onClick={handleSaveFollowUp}
-                  className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                >
-                  <Save className="w-3 h-3" />
-                  Save
-                </button>
-                <button
-                  onClick={handleCancelFollowUp}
-                  className="flex items-center gap-1 px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
-                >
-                  <X className="w-3 h-3" />
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className={`text-xs p-2 rounded ${isFollowUpDue ? 'bg-orange-50 text-orange-700' : 'bg-gray-50 text-gray-600'}`}>
-              {lead.followUpAt ? (
-                <div className="flex items-center gap-1">
-                  {isFollowUpDue && <Bell className="w-3 h-3" />}
-                  {lead.followUpAt.toLocaleString()}
-                  {isFollowUpDue && <span className="text-orange-600 font-medium ml-1">(Due!)</span>}
-                </div>
-              ) : (
-                "No follow-up scheduled"
-              )}
-            </div>
-          )}
+          <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded min-h-[2rem]">
+            {lead.notes || "No notes added yet..."}
+          </p>
         </div>
 
         {lead.callLogs && lead.callLogs.length > 0 && (
@@ -319,7 +231,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
           </button>
         )}
 
-        {(isFollowUpDue || isCallFollowUpDue) && (
+        {isCallFollowUpDue && (
           <div className="flex items-center text-orange-600 text-xs bg-orange-50 px-2 py-1 rounded">
             <Clock className="w-3 h-3 mr-1" />
             Follow-up due
@@ -418,7 +330,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
     <>
       <tr 
         ref={ref} 
-        className={`border-b transition-colors cursor-pointer hover:bg-blue-50 ${lead.contacted ? "bg-green-50/50" : "bg-white"} ${isFollowUpDue || isCallFollowUpDue ? "border-l-4 border-orange-400" : ""}`} 
+        className={`border-b transition-colors cursor-pointer hover:bg-blue-50 ${lead.contacted ? "bg-green-50/50" : "bg-white"} ${isCallFollowUpDue ? "border-l-4 border-orange-400" : ""}`} 
         onClick={handleRowClick}
       >
         <td className="p-3 lg:p-4">
@@ -429,7 +341,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
             <div>
               <div className="font-medium text-sm flex items-center gap-2">
                 {lead.name}
-                {(isFollowUpDue || isCallFollowUpDue) && <AlertTriangle className="w-4 h-4 text-orange-500" />}
+                {isCallFollowUpDue && <AlertTriangle className="w-4 h-4 text-orange-500" />}
               </div>
             </div>
           </div>
@@ -469,100 +381,18 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
         </td>
         <td className="p-3 lg:p-4" onClick={(e) => e.stopPropagation()}>
           <div className="max-w-xs">
-            {editingLeadNotes ? (
-              <div className="space-y-2">
-                <textarea
-                  value={leadNotesValue}
-                  onChange={(e) => setLeadNotesValue(e.target.value)}
-                  className="w-full p-2 text-sm border border-gray-300 rounded resize-none"
-                  rows={2}
-                  placeholder="Add notes..."
-                  style={{ direction: 'ltr' }}
-                  dir="ltr"
-                />
-                <div className="flex gap-1">
-                  <button
-                    onClick={handleSaveLeadNotes}
-                    className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                  >
-                    <Save className="w-3 h-3" />
-                    Save
-                  </button>
-                  <button
-                    onClick={handleCancelLeadNotes}
-                    className="flex items-center gap-1 px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
-                  >
-                    <X className="w-3 h-3" />
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-2">
-                <p className="text-sm text-gray-700 truncate">
-                  {lead.notes || "No notes..."}
-                </p>
-                <button
-                  onClick={() => setEditingLeadNotes(true)}
-                  className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
-                  title="Edit notes"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        </td>
-        <td className="p-3 lg:p-4" onClick={(e) => e.stopPropagation()}>
-          <div className="max-w-xs">
-            {editingFollowUp ? (
-              <div className="space-y-2">
-                <input
-                  type="datetime-local"
-                  value={followUpValue}
-                  onChange={(e) => setFollowUpValue(e.target.value)}
-                  className="w-full p-2 text-sm border border-gray-300 rounded"
-                />
-                <div className="flex gap-1">
-                  <button
-                    onClick={handleSaveFollowUp}
-                    className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                  >
-                    <Save className="w-3 h-3" />
-                    Save
-                  </button>
-                  <button
-                    onClick={handleCancelFollowUp}
-                    className="flex items-center gap-1 px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
-                  >
-                    <X className="w-3 h-3" />
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-2">
-                <div className={`text-sm ${isFollowUpDue ? 'text-orange-700' : 'text-gray-700'}`}>
-                  {lead.followUpAt ? (
-                    <div className="flex items-center gap-1">
-                      {isFollowUpDue && <Bell className="w-3 h-3 text-orange-500" />}
-                      <span className="truncate">
-                        {lead.followUpAt.toLocaleDateString()} {lead.followUpAt.toLocaleTimeString()}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">Not scheduled</span>
-                  )}
-                </div>
-                <button
-                  onClick={() => setEditingFollowUp(true)}
-                  className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
-                  title="Edit follow-up date"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-              </div>
-            )}
+            <div className="flex items-start gap-2">
+              <p className="text-sm text-gray-700 truncate">
+                {lead.notes || "No notes..."}
+              </p>
+              <button
+                onClick={handleNotesDialogOpen}
+                className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
+                title="Edit notes"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </td>
         <td className="p-3 lg:p-4">
@@ -575,7 +405,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
               <Edit className="w-4 h-4 mr-1" />
               <span>Log Call</span>
             </button>
-            {(isFollowUpDue || isCallFollowUpDue) && (
+            {isCallFollowUpDue && (
               <div className="flex items-center text-orange-600 text-xs bg-orange-50 px-2 py-1 rounded">
                 <Clock className="w-3 h-3 mr-1" />
                 Due
@@ -605,7 +435,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
       {/* Call History Row */}
       {showCallHistory && lead.callLogs && lead.callLogs.length > 0 && (
         <tr className="bg-gray-50">
-          <td colSpan={8} className="p-3 lg:p-4">
+          <td colSpan={7} className="p-3 lg:p-4">
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <h4 className="font-medium text-sm text-gray-700">Call History</h4>
@@ -706,7 +536,72 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
     <>
       {isMobile ? <MobileCard /> : <TableRow />}
       
-      {/* Call Logging Dialog - Simplified and separate */}
+      {/* Notes and Follow-up Dialog */}
+      {showNotesDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleNotesDialogClose}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Update Notes - {lead.name}</h3>
+              <button
+                onClick={handleNotesDialogClose}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes
+                </label>
+                <textarea
+                  value={notesValue}
+                  onChange={(e) => setNotesValue(e.target.value)}
+                  placeholder="Add notes about this lead..."
+                  rows={4}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  style={{ direction: 'ltr' }}
+                  dir="ltr"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Follow-up (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={followUpValue}
+                  onChange={(e) => setFollowUpValue(e.target.value)}
+                  placeholder="e.g., 'next week', '2025-01-25', 'call Monday morning'"
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter when to follow up (flexible format)
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={handleNotesDialogClose}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveNotes}
+                className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Save Notes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Call Logging Dialog */}
       {showCallDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleCloseDialog}>
           <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
