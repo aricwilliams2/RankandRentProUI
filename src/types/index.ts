@@ -46,6 +46,8 @@ export interface Lead {
   reviews: number;
   website: string;
   contacted: boolean;
+  notes?: string; // General notes about the lead
+  followUpAt?: Date; // When to follow up with this lead
   callLogs: CallLog[];
   createdAt?: Date;
   updatedAt?: Date;
@@ -301,4 +303,6 @@ export interface LeadContextType {
   handleSort: (field: SortField) => void;
   addCallLog: (leadId: string, callLog: Omit<CallLog, 'id' | 'leadId' | 'callDate'>) => void;
   updateCallLog: (leadId: string, callLogId: string, updateData: Partial<Pick<CallLog, 'outcome' | 'notes'>>) => void;
+  updateLeadNotes: (leadId: string, notes: string) => void;
+  updateFollowUpDate: (leadId: string, followUpAt: Date | null) => void;
 }

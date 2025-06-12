@@ -19,7 +19,17 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [leads, setLeads] = useState<Lead[]>(() => {
     const savedLeads = localStorage.getItem(`leads_${currentArea}`);
     if (savedLeads) {
-      return JSON.parse(savedLeads);
+      const parsedLeads = JSON.parse(savedLeads);
+      // Convert date strings back to Date objects
+      return parsedLeads.map((lead: any) => ({
+        ...lead,
+        followUpAt: lead.followUpAt ? new Date(lead.followUpAt) : undefined,
+        callLogs: lead.callLogs?.map((log: any) => ({
+          ...log,
+          callDate: new Date(log.callDate),
+          nextFollowUp: log.nextFollowUp ? new Date(log.nextFollowUp) : undefined
+        })) || []
+      }));
     }
     return areaData.find(area => area.id === currentArea)?.leads || [];
   });
@@ -40,7 +50,18 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentAreaState(areaId);
     const savedLeads = localStorage.getItem(`leads_${areaId}`);
     if (savedLeads) {
-      setLeads(JSON.parse(savedLeads));
+      const parsedLeads = JSON.parse(savedLeads);
+      // Convert date strings back to Date objects
+      const leadsWithDates = parsedLeads.map((lead: any) => ({
+        ...lead,
+        followUpAt: lead.followUpAt ? new Date(lead.followUpAt) : undefined,
+        callLogs: lead.callLogs?.map((log: any) => ({
+          ...log,
+          callDate: new Date(log.callDate),
+          nextFollowUp: log.nextFollowUp ? new Date(log.nextFollowUp) : undefined
+        })) || []
+      }));
+      setLeads(leadsWithDates);
     } else {
       const areaLeads = areaData.find(area => area.id === areaId)?.leads || [];
       setLeads(areaLeads);
@@ -121,6 +142,24 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
               ) || []
             }
           : lead
+      )
+    );
+  };
+
+  // Update lead notes function
+  const updateLeadNotes = (leadId: string, notes: string) => {
+    setLeads(prevLeads => 
+      prevLeads.map(lead => 
+        lead.id === leadId ? { ...lead, notes } : lead
+      )
+    );
+  };
+
+  // Update follow-up date function
+  const updateFollowUpDate = (leadId: string, followUpAt: Date | null) => {
+    setLeads(prevLeads => 
+      prevLeads.map(lead => 
+        lead.id === leadId ? { ...lead, followUpAt } : lead
       )
     );
   };
@@ -247,7 +286,9 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSortDirection,
       handleSort,
       addCallLog,
-      updateCallLog
+      updateCallLog,
+      updateLeadNotes,
+      updateFollowUpDate
     }}>
       {children}
     </LeadContext.Provider>
