@@ -109,10 +109,10 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const nextDate = new Date(now);
 
     switch (outcome) {
-      case 'follow_up_24h':
+      case 'follow_up_1_day':
         nextDate.setDate(now.getDate() + 1);
         return nextDate;
-      case 'follow_up_72h':
+      case 'follow_up_72_hours':
         nextDate.setDate(now.getDate() + 3);
         return nextDate;
       case 'follow_up_next_week':

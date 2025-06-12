@@ -13,7 +13,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
   const { setLastCalledIndex, toggleContactStatus, addCallLog } = useLeadContext();
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [showCallHistory, setShowCallHistory] = useState(false);
-  const [callOutcome, setCallOutcome] = useState<CallLog['outcome']>('no_answer');
+  const [callOutcome, setCallOutcome] = useState<CallLog['outcome']>('follow_up_1_day');
   const [callNotes, setCallNotes] = useState('');
 
   const handleCallClick = (e: React.MouseEvent) => {
@@ -27,14 +27,14 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
   };
 
   const handleSubmitCallLog = () => {
-    if (callNotes.trim() || callOutcome !== 'no_answer') {
+    if (callNotes.trim()) {
       addCallLog(lead.id, {
         outcome: callOutcome,
         notes: callNotes.trim()
       });
       
       setCallNotes('');
-      setCallOutcome('no_answer');
+      setCallOutcome('follow_up_1_day');
       setShowCallDialog(false);
       
       // Also trigger the actual phone call
@@ -46,30 +46,29 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
 
   const getOutcomeLabel = (outcome: CallLog['outcome']) => {
     const labels = {
-      no_answer: 'No Answer',
-      never_call_back: 'Never Call Back',
-      follow_up_24h: 'Follow up in 24 hours',
-      follow_up_72h: 'Follow up in 72 hours', 
+      follow_up_1_day: 'Follow up in 1 day',
+      follow_up_72_hours: 'Follow up in 72 hours',
       follow_up_next_week: 'Follow up next week',
       follow_up_next_month: 'Follow up next month',
-      follow_up_3_months: 'Follow up in 3 months',
-      interested: 'Interested',
-      not_interested: 'Not Interested'
+      follow_up_3_months: 'Follow up in 3 months'
     };
     return labels[outcome] || outcome;
   };
 
   const getOutcomeColor = (outcome: CallLog['outcome']) => {
     switch (outcome) {
-      case 'interested':
-        return 'text-green-600 bg-green-50';
-      case 'not_interested':
-      case 'never_call_back':
+      case 'follow_up_1_day':
         return 'text-red-600 bg-red-50';
-      case 'no_answer':
+      case 'follow_up_72_hours':
+        return 'text-orange-600 bg-orange-50';
+      case 'follow_up_next_week':
         return 'text-yellow-600 bg-yellow-50';
-      default:
+      case 'follow_up_next_month':
         return 'text-blue-600 bg-blue-50';
+      case 'follow_up_3_months':
+        return 'text-green-600 bg-green-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -197,22 +196,18 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Call Outcome
+                  Follow-up Schedule
                 </label>
                 <select
                   value={callOutcome}
                   onChange={(e) => setCallOutcome(e.target.value as CallLog['outcome'])}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="no_answer">No Answer</option>
-                  <option value="never_call_back">Never Call Back</option>
-                  <option value="follow_up_24h">Follow up in 24 hours</option>
-                  <option value="follow_up_72h">Follow up in 72 hours</option>
+                  <option value="follow_up_1_day">Follow up in 1 day</option>
+                  <option value="follow_up_72_hours">Follow up in 72 hours</option>
                   <option value="follow_up_next_week">Follow up next week</option>
                   <option value="follow_up_next_month">Follow up next month</option>
                   <option value="follow_up_3_months">Follow up in 3 months</option>
-                  <option value="interested">Interested</option>
-                  <option value="not_interested">Not Interested</option>
                 </select>
               </div>
               
@@ -224,7 +219,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                   value={callNotes}
                   onChange={(e) => setCallNotes(e.target.value)}
                   placeholder="Enter notes about the call..."
-                  rows={3}
+                  rows={4}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -240,6 +235,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
               <button
                 onClick={handleSubmitCallLog}
                 className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                disabled={!callNotes.trim()}
               >
                 Save & Call
               </button>
@@ -383,22 +379,18 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Call Outcome
+                      Follow-up Schedule
                     </label>
                     <select
                       value={callOutcome}
                       onChange={(e) => setCallOutcome(e.target.value as CallLog['outcome'])}
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="no_answer">No Answer</option>
-                      <option value="never_call_back">Never Call Back</option>
-                      <option value="follow_up_24h">Follow up in 24 hours</option>
-                      <option value="follow_up_72h">Follow up in 72 hours</option>
+                      <option value="follow_up_1_day">Follow up in 1 day</option>
+                      <option value="follow_up_72_hours">Follow up in 72 hours</option>
                       <option value="follow_up_next_week">Follow up next week</option>
                       <option value="follow_up_next_month">Follow up next month</option>
                       <option value="follow_up_3_months">Follow up in 3 months</option>
-                      <option value="interested">Interested</option>
-                      <option value="not_interested">Not Interested</option>
                     </select>
                   </div>
                   
@@ -410,7 +402,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                       value={callNotes}
                       onChange={(e) => setCallNotes(e.target.value)}
                       placeholder="Enter notes about the call..."
-                      rows={3}
+                      rows={4}
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -426,6 +418,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                   <button
                     onClick={handleSubmitCallLog}
                     className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                    disabled={!callNotes.trim()}
                   >
                     Save & Call
                   </button>

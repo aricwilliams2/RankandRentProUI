@@ -26,7 +26,7 @@ export interface Website {
 export interface CallLog {
   id: string;
   leadId: string;
-  outcome: 'no_answer' | 'never_call_back' | 'follow_up_24h' | 'follow_up_72h' | 'follow_up_next_week' | 'follow_up_next_month' | 'follow_up_3_months' | 'interested' | 'not_interested';
+  outcome: 'follow_up_1_day' | 'follow_up_72_hours' | 'follow_up_next_week' | 'follow_up_next_month' | 'follow_up_3_months';
   notes: string;
   callDate: Date;
   nextFollowUp?: Date;
