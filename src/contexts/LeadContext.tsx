@@ -8,6 +8,49 @@ const initialFilters: Filters = {
   showContactedOnly: false
 };
 
+// API Configuration
+const API_BASE_URL = 'http://127.0.0.1:8000/api';
+
+// Transform lead data for API (frontend -> backend format)
+const transformLeadForAPI = (lead: Lead) => {
+  return {
+    id: lead.id,
+    name: lead.name,
+    reviews: lead.reviews,
+    phone: lead.phone,
+    website: lead.website,
+    contacted: lead.contacted ? 1 : 0,
+    follow_up_at: lead.followUpAt ? lead.followUpAt.toISOString() : null,
+    notes: lead.notes || null,
+    created_at: lead.createdAt?.toISOString() || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+};
+
+// API call to update lead
+const updateLeadAPI = async (lead: Lead) => {
+  try {
+    const leadData = transformLeadForAPI(lead);
+    const response = await fetch(`${API_BASE_URL}/leads/${lead.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(leadData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to update lead via API:', error);
+    throw error;
+  }
+};
+
 export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Get current area from localStorage or default to first area
   const [currentArea, setCurrentAreaState] = useState<string>(() => {
@@ -93,16 +136,79 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [lastCalledIndex, currentArea]);
 
   // Toggle contact status for a lead
-  const toggleContactStatus = (id: string) => {
-    setLeads(prevLeads => 
-      prevLeads.map(lead => 
-        lead.id === id ? { ...lead, contacted: !lead.contacted } : lead
-      )
-    );
+  const toggleContactStatus = async (id: string) => {
+    const lead = leads.find(l => l.id === id);
+    if (!lead) return;
+
+    const updatedLead = { ...lead, contacted: !lead.contacted };
+    
+    try {
+      // Update API first
+      await updateLeadAPI(updatedLead);
+      
+      // Update local state on success
+      setLeads(prevLeads => 
+        prevLeads.map(lead => 
+          lead.id === id ? updatedLead : lead
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update contacted status:', error);
+      // You might want to show a toast notification here
+    }
+  };
+
+  // Update lead notes function
+  const updateLeadNotes = async (leadId: string, notes: string) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    const updatedLead = { ...lead, notes };
+    
+    try {
+      // Update API first
+      await updateLeadAPI(updatedLead);
+      
+      // Update local state on success
+      setLeads(prevLeads => 
+        prevLeads.map(lead => 
+          lead.id === leadId ? updatedLead : lead
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update lead notes:', error);
+      // You might want to show a toast notification here
+    }
+  };
+
+  // Update follow-up date function
+  const updateFollowUpDate = async (leadId: string, followUpAt: Date | null) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    const updatedLead = { ...lead, followUpAt };
+    
+    try {
+      // Update API first
+      await updateLeadAPI(updatedLead);
+      
+      // Update local state on success
+      setLeads(prevLeads => 
+        prevLeads.map(lead => 
+          lead.id === leadId ? updatedLead : lead
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update follow-up date:', error);
+      // You might want to show a toast notification here
+    }
   };
 
   // Add call log function
-  const addCallLog = (leadId: string, callLogData: Omit<CallLog, 'id' | 'leadId' | 'callDate'>) => {
+  const addCallLog = async (leadId: string, callLogData: Omit<CallLog, 'id' | 'leadId' | 'callDate'>) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+
     const newCallLog: CallLog = {
       id: `call_${Date.now()}`,
       leadId,
@@ -111,57 +217,60 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextFollowUp: callLogData.nextFollowUp || calculateNextFollowUp(callLogData.outcome)
     };
 
-    setLeads(prevLeads => 
-      prevLeads.map(lead => 
-        lead.id === leadId 
-          ? { 
-              ...lead, 
-              callLogs: [...(lead.callLogs || []), newCallLog],
-              contacted: true // Mark as contacted when a call is logged
-            }
-          : lead
-      )
-    );
+    const updatedLead = {
+      ...lead,
+      callLogs: [...(lead.callLogs || []), newCallLog],
+      contacted: true // Mark as contacted when a call is logged
+    };
+
+    try {
+      // Update API first
+      await updateLeadAPI(updatedLead);
+      
+      // Update local state on success
+      setLeads(prevLeads => 
+        prevLeads.map(lead => 
+          lead.id === leadId ? updatedLead : lead
+        )
+      );
+    } catch (error) {
+      console.error('Failed to add call log:', error);
+      // You might want to show a toast notification here
+    }
   };
 
   // Update call log function
-  const updateCallLog = (leadId: string, callLogId: string, updateData: Partial<Pick<CallLog, 'outcome' | 'notes'>>) => {
-    setLeads(prevLeads => 
-      prevLeads.map(lead => 
-        lead.id === leadId 
+  const updateCallLog = async (leadId: string, callLogId: string, updateData: Partial<Pick<CallLog, 'outcome' | 'notes'>>) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    const updatedLead = {
+      ...lead,
+      callLogs: lead.callLogs?.map(log => 
+        log.id === callLogId 
           ? { 
-              ...lead, 
-              callLogs: lead.callLogs?.map(log => 
-                log.id === callLogId 
-                  ? { 
-                      ...log, 
-                      ...updateData,
-                      nextFollowUp: updateData.outcome ? calculateNextFollowUp(updateData.outcome) : log.nextFollowUp
-                    }
-                  : log
-              ) || []
+              ...log, 
+              ...updateData,
+              nextFollowUp: updateData.outcome ? calculateNextFollowUp(updateData.outcome) : log.nextFollowUp
             }
-          : lead
-      )
-    );
-  };
+          : log
+      ) || []
+    };
 
-  // Update lead notes function
-  const updateLeadNotes = (leadId: string, notes: string) => {
-    setLeads(prevLeads => 
-      prevLeads.map(lead => 
-        lead.id === leadId ? { ...lead, notes } : lead
-      )
-    );
-  };
-
-  // Update follow-up date function
-  const updateFollowUpDate = (leadId: string, followUpAt: Date | null) => {
-    setLeads(prevLeads => 
-      prevLeads.map(lead => 
-        lead.id === leadId ? { ...lead, followUpAt } : lead
-      )
-    );
+    try {
+      // Update API first
+      await updateLeadAPI(updatedLead);
+      
+      // Update local state on success
+      setLeads(prevLeads => 
+        prevLeads.map(lead => 
+          lead.id === leadId ? updatedLead : lead
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update call log:', error);
+      // You might want to show a toast notification here
+    }
   };
 
   // Helper function to calculate next follow-up date based on outcome
