@@ -23,19 +23,31 @@ export interface Website {
   updatedAt: Date;
 }
 
-export interface Lead {
+export interface CallLog {
   id: string;
-  websiteId: string;
-  clientId?: string;
+  leadId: string;
+  outcome: 'follow_up_1_day' | 'follow_up_72_hours' | 'follow_up_next_week' | 'follow_up_next_month' | 'follow_up_3_months';
+  notes: string;
+  callDate: Date;
+  duration?: number; // in seconds
+    nextFollowUp: string | null;
+}
+
+interface Lead {
+  id: string;
   name: string;
-  email: string;
+  reviews: number;
   phone: string;
-  source: 'form' | 'call';
-  status: 'new' | 'contacted' | 'qualified' | 'converted';
-  value: number;
+  website: string;
+  contacted: boolean;
+  city?: string;
+  follow_up_at?: string | null;
+  notes?: string | null;
   createdAt: Date;
   updatedAt: Date;
+  callLogs: CallLog[];
 }
+
 
 export interface PhoneNumber {
   id: string;
@@ -254,15 +266,6 @@ export interface SerpInsights {
   raw: any;
 }
 
-export interface Lead {
-  id: string;
-  name: string;
-  reviews: number;
-  phone: string;
-  website: string;
-  contacted: boolean;
-}
-
 export interface AreaData {
   id: string;
   name: string;
@@ -279,19 +282,9 @@ export type SortDirection = 'asc' | 'desc';
 export interface LeadContextType {
   leads: Lead[];
   setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
-  lastCalledIndex: number | null;
-  setLastCalledIndex: React.Dispatch<React.SetStateAction<number | null>>;
-  toggleContactStatus: (id: string) => void;
-  clearCache: () => void;
-  filters: Filters;
-  setFilters: React.Dispatch<React.SetStateAction<Filters>>;
-  filteredLeads: Lead[];
-  areas: AreaData[];
-  currentArea: string;
-  setCurrentArea: (areaId: string) => void;
-  sortField: SortField | null;
-  setSortField: React.Dispatch<React.SetStateAction<SortField | null>>;
-  sortDirection: SortDirection;
-  setSortDirection: React.Dispatch<React.SetStateAction<SortDirection>>;
-  handleSort: (field: SortField) => void;
+  loading: boolean;
+  error: string | null;
+  updateLead: (lead: Lead) => Promise<Lead>;
+  createLead: (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => Promise<Lead>;
+  deleteLead: (id: string) => Promise<void>;
 }
