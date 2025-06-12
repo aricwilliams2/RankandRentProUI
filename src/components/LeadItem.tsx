@@ -1,5 +1,5 @@
 import React, { forwardRef, useState } from "react";
-import { ExternalLink, Phone, Check, MessageSquare, Calendar, X, ChevronDown, ChevronUp, Clock, AlertCircle } from "lucide-react";
+import { ExternalLink, Phone, Check, MessageSquare, Calendar, X, ChevronDown, ChevronUp, Clock, AlertTriangle, Edit } from "lucide-react";
 import StarRating from "./StarRating";
 import { Lead, CallLog } from "../types";
 import { useLeadContext } from "../contexts/LeadContext";
@@ -16,7 +16,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
   const [callOutcome, setCallOutcome] = useState<CallLog['outcome']>('follow_up_1_day');
   const [callNotes, setCallNotes] = useState('');
 
-  const handleCallClick = (e: React.MouseEvent) => {
+  const handleCallLogClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setLastCalledIndex(index);
     setShowCallDialog(true);
@@ -36,11 +36,6 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
       setCallNotes('');
       setCallOutcome('follow_up_1_day');
       setShowCallDialog(false);
-      
-      // Also trigger the actual phone call
-      if (lead.phone) {
-        window.location.href = lead.phone;
-      }
     }
   };
 
@@ -98,7 +93,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
           <div className="min-w-0 flex-1">
             <div className="font-medium text-sm truncate flex items-center gap-2">
               {lead.name}
-              {isFollowUpDue && <AlertCircle className="w-4 h-4 text-orange-500" />}
+              {isFollowUpDue && <AlertTriangle className="w-4 h-4 text-orange-500" />}
             </div>
             <div className="mt-1">
               <StarRating reviews={lead.reviews} />
@@ -109,15 +104,25 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
       
       <div className="space-y-2">
         {lead.phone && (
-          <button 
-            onClick={handleCallClick} 
-            className="flex items-center text-blue-600 font-medium hover:text-blue-800 transition-colors text-sm w-full justify-start"
-          >
-            <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
-            <span className="border-b border-blue-300 hover:border-blue-600 truncate">
-              {lead.phone.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3")}
-            </span>
-          </button>
+          <div className="flex items-center justify-between">
+            <a 
+              href={lead.phone} 
+              className="flex items-center text-blue-600 font-medium hover:text-blue-800 transition-colors text-sm flex-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
+              <span className="border-b border-blue-300 hover:border-blue-600 truncate">
+                {lead.phone.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3")}
+              </span>
+            </a>
+            <button 
+              onClick={handleCallLogClick} 
+              className="ml-2 p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="Log Call"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+          </div>
         )}
         
         <a 
@@ -213,7 +218,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Call Notes
+                  Call Notes *
                 </label>
                 <textarea
                   value={callNotes}
@@ -221,6 +226,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                   placeholder="Enter notes about the call..."
                   rows={4}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
                 />
               </div>
             </div>
@@ -234,10 +240,10 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
               </button>
               <button
                 onClick={handleSubmitCallLog}
-                className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                 disabled={!callNotes.trim()}
               >
-                Save & Call
+                Save Notes
               </button>
             </div>
           </div>
@@ -262,7 +268,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
             <div>
               <div className="font-medium text-sm flex items-center gap-2">
                 {lead.name}
-                {isFollowUpDue && <AlertCircle className="w-4 h-4 text-orange-500" />}
+                {isFollowUpDue && <AlertTriangle className="w-4 h-4 text-orange-500" />}
               </div>
             </div>
           </div>
@@ -274,15 +280,16 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
         </td>
         <td className="p-3 lg:p-4">
           {lead.phone ? (
-            <button 
-              onClick={handleCallClick} 
+            <a 
+              href={lead.phone} 
               className="flex items-center text-blue-600 font-medium hover:text-blue-800 transition-colors group text-sm"
+              onClick={(e) => e.stopPropagation()}
             >
               <Phone className="w-4 h-4 mr-1.5 group-hover:animate-pulse" />
               <span className="border-b border-blue-300 group-hover:border-blue-600">
                 {lead.phone.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3")}
               </span>
-            </button>
+            </a>
           ) : (
             <span className="text-gray-400 text-sm">No phone</span>
           )}
@@ -301,6 +308,24 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
         </td>
         <td className="p-3 lg:p-4">
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleCallLogClick}
+              className="flex items-center text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors text-sm px-2 py-1 rounded"
+              title="Log Call"
+            >
+              <Edit className="w-4 h-4 mr-1" />
+              <span>Log Call</span>
+            </button>
+            {isFollowUpDue && (
+              <div className="flex items-center text-orange-600 text-xs bg-orange-50 px-2 py-1 rounded">
+                <Clock className="w-3 h-3 mr-1" />
+                Due
+              </div>
+            )}
+          </div>
+        </td>
+        <td className="p-3 lg:p-4">
+          <div className="flex items-center gap-2">
             {lead.callLogs && lead.callLogs.length > 0 && (
               <button
                 onClick={(e) => {
@@ -314,12 +339,6 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                 {showCallHistory ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
               </button>
             )}
-            {isFollowUpDue && (
-              <div className="flex items-center text-orange-600 text-xs bg-orange-50 px-2 py-1 rounded">
-                <Clock className="w-3 h-3 mr-1" />
-                Due
-              </div>
-            )}
           </div>
         </td>
       </tr>
@@ -327,7 +346,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
       {/* Call History Row */}
       {showCallHistory && lead.callLogs && lead.callLogs.length > 0 && (
         <tr className="bg-gray-50">
-          <td colSpan={5} className="p-3 lg:p-4">
+          <td colSpan={6} className="p-3 lg:p-4">
             <div className="space-y-2">
               <h4 className="font-medium text-sm text-gray-700">Call History</h4>
               {lead.callLogs
@@ -363,7 +382,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
       {/* Call Logging Dialog */}
       {showCallDialog && (
         <tr>
-          <td colSpan={5}>
+          <td colSpan={6}>
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-lg p-6 w-full max-w-md">
                 <div className="flex justify-between items-center mb-4">
@@ -396,7 +415,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Call Notes
+                      Call Notes *
                     </label>
                     <textarea
                       value={callNotes}
@@ -404,6 +423,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                       placeholder="Enter notes about the call..."
                       rows={4}
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
                     />
                   </div>
                 </div>
@@ -417,12 +437,12 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                   </button>
                   <button
                     onClick={handleSubmitCallLog}
-                    className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                    className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                     disabled={!callNotes.trim()}
                   >
-                    Save & Call
+                    Save Notes
                   </button>
-                  </div>
+                </div>
               </div>
             </div>
           </td>

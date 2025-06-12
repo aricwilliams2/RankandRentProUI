@@ -76,6 +76,9 @@ const LeadsList: React.FC = () => {
                 <div className="flex items-center">Website {renderSortIndicator("website")}</div>
               </th>
               <th className="text-left p-3 lg:p-4 font-semibold text-gray-700 text-sm">
+                Call Log
+              </th>
+              <th className="text-left p-3 lg:p-4 font-semibold text-gray-700 text-sm">
                 Call History
               </th>
             </tr>
