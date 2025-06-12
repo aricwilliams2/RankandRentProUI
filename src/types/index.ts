@@ -49,6 +49,7 @@ export interface Lead {
   callLogs: CallLog[];
   createdAt?: Date;
   updatedAt?: Date;
+  city?: string; // Added for API data
 }
 
 export interface PhoneNumber {
@@ -301,4 +302,6 @@ export interface LeadContextType {
   handleSort: (field: SortField) => void;
   addCallLog: (leadId: string, callLog: Omit<CallLog, 'id' | 'leadId' | 'callDate'>) => void;
   updateCallLog: (leadId: string, callLogId: string, updateData: Partial<Pick<CallLog, 'outcome' | 'notes'>>) => void;
+  loading?: boolean;
+  error?: string | null;
 }

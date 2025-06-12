@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
 import { Lead, LeadContextType, Filters, AreaData, SortField, SortDirection, CallLog } from '../types';
-import { areaData } from '../data/areas';
 
 const LeadContext = createContext<LeadContextType | undefined>(undefined);
 
@@ -11,6 +10,22 @@ const initialFilters: Filters = {
 // API Configuration
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
+// Transform API lead data to frontend format
+const transformAPILeadToFrontend = (apiLead: any): Lead => {
+  return {
+    id: apiLead.id,
+    name: apiLead.name,
+    reviews: apiLead.reviews,
+    phone: apiLead.phone,
+    website: apiLead.website,
+    contacted: apiLead.contacted === 1,
+    callLogs: [], // Call logs will be managed separately
+    createdAt: new Date(apiLead.created_at),
+    updatedAt: new Date(apiLead.updated_at),
+    city: apiLead.city // Store city for area grouping
+  };
+};
+
 // Transform lead data for API (frontend -> backend format)
 const transformLeadForAPI = (lead: Lead) => {
   return {
@@ -20,11 +35,34 @@ const transformLeadForAPI = (lead: Lead) => {
     phone: lead.phone,
     website: lead.website,
     contacted: lead.contacted ? 1 : 0,
-    follow_up_at: null, // This will be handled through call logs now
-    notes: null, // This will be handled through call logs now
+    follow_up_at: null, // Handled through call logs now
+    notes: null, // Handled through call logs now
     created_at: lead.createdAt?.toISOString() || new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
+};
+
+// API call to fetch leads
+const fetchLeadsAPI = async (): Promise<Lead[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/leads/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+
+    const apiLeads = await response.json();
+    return apiLeads.map(transformAPILeadToFrontend);
+  } catch (error) {
+    console.error('Failed to fetch leads from API:', error);
+    throw error;
+  }
 };
 
 // API call to update lead
@@ -52,30 +90,15 @@ const updateLeadAPI = async (lead: Lead) => {
 };
 
 export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Get current area from localStorage or default to first area
+  const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Get current area from localStorage or default to first available city
   const [currentArea, setCurrentAreaState] = useState<string>(() => {
-    const savedArea = localStorage.getItem('currentArea');
-    return savedArea || areaData[0].id;
+    return localStorage.getItem('currentArea') || '';
   });
 
-  // Get leads for the current area from localStorage or default to area data
-  const [leads, setLeads] = useState<Lead[]>(() => {
-    const savedLeads = localStorage.getItem(`leads_${currentArea}`);
-    if (savedLeads) {
-      const parsedLeads = JSON.parse(savedLeads);
-      // Convert date strings back to Date objects
-      return parsedLeads.map((lead: any) => ({
-        ...lead,
-        callLogs: lead.callLogs?.map((log: any) => ({
-          ...log,
-          callDate: new Date(log.callDate),
-          nextFollowUp: log.nextFollowUp ? new Date(log.nextFollowUp) : undefined
-        })) || []
-      }));
-    }
-    return areaData.find(area => area.id === currentArea)?.leads || [];
-  });
-  
   const [lastCalledIndex, setLastCalledIndex] = useState<number | null>(() => {
     const savedIndex = localStorage.getItem(`lastCalledIndex_${currentArea}`);
     return savedIndex ? parseInt(savedIndex, 10) : null;
@@ -87,26 +110,79 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [sortField, setSortField] = useState<SortField | null>("reviews");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-  // Set current area and load leads for that area
+  // Create areas from API data (group by city)
+  const areas = useMemo<AreaData[]>(() => {
+    const cityGroups = allLeads.reduce((acc, lead) => {
+      const city = (lead as any).city || 'Unknown';
+      if (!acc[city]) {
+        acc[city] = [];
+      }
+      acc[city].push(lead);
+      return acc;
+    }, {} as Record<string, Lead[]>);
+
+    return Object.entries(cityGroups).map(([city, leads]) => ({
+      id: city.toLowerCase().replace(/\s+/g, '-'),
+      name: city,
+      leads
+    }));
+  }, [allLeads]);
+
+  // Get leads for current area
+  const leads = useMemo(() => {
+    if (!currentArea) return [];
+    const area = areas.find(a => a.id === currentArea);
+    return area?.leads || [];
+  }, [areas, currentArea]);
+
+  // Load leads from API on component mount
+  useEffect(() => {
+    const loadLeads = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Load call logs from localStorage (since they're managed locally)
+        const savedCallLogs = localStorage.getItem('callLogs');
+        const callLogsMap = savedCallLogs ? JSON.parse(savedCallLogs) : {};
+        
+        const apiLeads = await fetchLeadsAPI();
+        
+        // Merge with saved call logs
+        const leadsWithCallLogs = apiLeads.map(lead => ({
+          ...lead,
+          callLogs: callLogsMap[lead.id]?.map((log: any) => ({
+            ...log,
+            callDate: new Date(log.callDate),
+            nextFollowUp: log.nextFollowUp ? new Date(log.nextFollowUp) : undefined
+          })) || []
+        }));
+        
+        setAllLeads(leadsWithCallLogs);
+        
+        // Set default area if not set
+        if (!currentArea && leadsWithCallLogs.length > 0) {
+          const firstCity = (leadsWithCallLogs[0] as any).city;
+          if (firstCity) {
+            const firstAreaId = firstCity.toLowerCase().replace(/\s+/g, '-');
+            setCurrentAreaState(firstAreaId);
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load leads');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLeads();
+  }, []);
+
+  // Set current area and update localStorage
   const setCurrentArea = (areaId: string) => {
     setCurrentAreaState(areaId);
-    const savedLeads = localStorage.getItem(`leads_${areaId}`);
-    if (savedLeads) {
-      const parsedLeads = JSON.parse(savedLeads);
-      // Convert date strings back to Date objects
-      const leadsWithDates = parsedLeads.map((lead: any) => ({
-        ...lead,
-        callLogs: lead.callLogs?.map((log: any) => ({
-          ...log,
-          callDate: new Date(log.callDate),
-          nextFollowUp: log.nextFollowUp ? new Date(log.nextFollowUp) : undefined
-        })) || []
-      }));
-      setLeads(leadsWithDates);
-    } else {
-      const areaLeads = areaData.find(area => area.id === areaId)?.leads || [];
-      setLeads(areaLeads);
-    }
+    localStorage.setItem('currentArea', areaId);
+    
     // Reset filters when changing area
     setFilters(initialFilters);
     // Reset last called index
@@ -118,13 +194,22 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Save current area to localStorage
   useEffect(() => {
-    localStorage.setItem('currentArea', currentArea);
+    if (currentArea) {
+      localStorage.setItem('currentArea', currentArea);
+    }
   }, [currentArea]);
 
-  // Save leads to localStorage whenever they change
+  // Save call logs to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem(`leads_${currentArea}`, JSON.stringify(leads));
-  }, [leads, currentArea]);
+    const callLogsMap = allLeads.reduce((acc, lead) => {
+      if (lead.callLogs && lead.callLogs.length > 0) {
+        acc[lead.id] = lead.callLogs;
+      }
+      return acc;
+    }, {} as Record<string, CallLog[]>);
+    
+    localStorage.setItem('callLogs', JSON.stringify(callLogsMap));
+  }, [allLeads]);
 
   // Save last called index to localStorage
   useEffect(() => {
@@ -135,7 +220,7 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Toggle contact status for a lead
   const toggleContactStatus = async (id: string) => {
-    const lead = leads.find(l => l.id === id);
+    const lead = allLeads.find(l => l.id === id);
     if (!lead) return;
 
     const updatedLead = { ...lead, contacted: !lead.contacted };
@@ -145,20 +230,20 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await updateLeadAPI(updatedLead);
       
       // Update local state on success
-      setLeads(prevLeads => 
+      setAllLeads(prevLeads => 
         prevLeads.map(lead => 
           lead.id === id ? updatedLead : lead
         )
       );
     } catch (error) {
       console.error('Failed to update contacted status:', error);
-      // You might want to show a toast notification here
+      setError('Failed to update lead status');
     }
   };
 
   // Add call log function
   const addCallLog = async (leadId: string, callLogData: Omit<CallLog, 'id' | 'leadId' | 'callDate'>) => {
-    const lead = leads.find(l => l.id === leadId);
+    const lead = allLeads.find(l => l.id === leadId);
     if (!lead) return;
 
     const newCallLog: CallLog = {
@@ -176,24 +261,24 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     try {
-      // Update API first
+      // Update API first (just the contacted status)
       await updateLeadAPI(updatedLead);
       
       // Update local state on success
-      setLeads(prevLeads => 
+      setAllLeads(prevLeads => 
         prevLeads.map(lead => 
           lead.id === leadId ? updatedLead : lead
         )
       );
     } catch (error) {
       console.error('Failed to add call log:', error);
-      // You might want to show a toast notification here
+      setError('Failed to add call log');
     }
   };
 
   // Update call log function
   const updateCallLog = async (leadId: string, callLogId: string, updateData: Partial<Pick<CallLog, 'outcome' | 'notes'>>) => {
-    const lead = leads.find(l => l.id === leadId);
+    const lead = allLeads.find(l => l.id === leadId);
     if (!lead) return;
 
     const updatedLead = {
@@ -210,18 +295,18 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     try {
-      // Update API first
+      // Update API first (contacted status might change)
       await updateLeadAPI(updatedLead);
       
       // Update local state on success
-      setLeads(prevLeads => 
+      setAllLeads(prevLeads => 
         prevLeads.map(lead => 
           lead.id === leadId ? updatedLead : lead
         )
       );
     } catch (error) {
       console.error('Failed to update call log:', error);
-      // You might want to show a toast notification here
+      setError('Failed to update call log');
     }
   };
 
@@ -251,17 +336,25 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Clear cache for current area
-  const clearCache = () => {
-    localStorage.removeItem(`leads_${currentArea}`);
+  // Clear cache and reload from API
+  const clearCache = async () => {
     localStorage.removeItem(`lastCalledIndex_${currentArea}`);
+    localStorage.removeItem('callLogs');
     
-    const areaLeads = areaData.find(area => area.id === currentArea)?.leads || [];
-    setLeads(areaLeads);
-    setLastCalledIndex(null);
-    setFilters(initialFilters);
-    setSortField("reviews");
-    setSortDirection("desc");
+    try {
+      setLoading(true);
+      const apiLeads = await fetchLeadsAPI();
+      setAllLeads(apiLeads);
+      setLastCalledIndex(null);
+      setFilters(initialFilters);
+      setSortField("reviews");
+      setSortDirection("desc");
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reload leads');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle sorting by toggling field and direction
@@ -330,7 +423,7 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <LeadContext.Provider value={{ 
       leads,
-      setLeads,
+      setLeads: () => {}, // Not used anymore, data comes from API
       lastCalledIndex, 
       setLastCalledIndex,
       toggleContactStatus,
@@ -338,7 +431,7 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       filters,
       setFilters,
       filteredLeads,
-      areas: areaData,
+      areas,
       currentArea,
       setCurrentArea,
       sortField,
@@ -347,7 +440,9 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSortDirection,
       handleSort,
       addCallLog,
-      updateCallLog
+      updateCallLog,
+      loading,
+      error
     }}>
       {children}
     </LeadContext.Provider>

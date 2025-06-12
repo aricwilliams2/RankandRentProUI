@@ -1,9 +1,9 @@
 import React from "react";
-import { Phone, RefreshCw, Menu } from "lucide-react";
+import { Phone, RefreshCw, Menu, AlertCircle } from "lucide-react";
 import { useLeadContext } from "../contexts/LeadContext";
 
 const Header: React.FC = () => {
-  const { clearCache, currentArea, areas } = useLeadContext();
+  const { clearCache, currentArea, areas, loading, error } = useLeadContext();
   const currentAreaName = areas.find((area) => area.id === currentArea)?.name || "";
 
   return (
@@ -17,17 +17,30 @@ const Header: React.FC = () => {
               {currentAreaName}
             </span>
           )}
+          {loading && (
+            <div className="flex items-center text-white/70 text-xs">
+              <div className="animate-spin rounded-full h-3 w-3 border-b border-white mr-1"></div>
+              Loading...
+            </div>
+          )}
+          {error && (
+            <div className="flex items-center text-red-300 text-xs">
+              <AlertCircle className="h-3 w-3 mr-1" />
+              Error
+            </div>
+          )}
         </div>
         <div className="flex items-center ml-2">
           <span className="hidden lg:inline mr-3 text-sm whitespace-nowrap">Your Sales Leads Dashboard</span>
           <button 
             onClick={clearCache} 
-            className="flex items-center px-2 sm:px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs sm:text-sm transition-colors whitespace-nowrap" 
-            title="Reset data for current area"
+            className="flex items-center px-2 sm:px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs sm:text-sm transition-colors whitespace-nowrap disabled:opacity-50" 
+            title="Reload data from API"
+            disabled={loading}
           >
-            <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
-            <span className="hidden sm:inline">Reset Data</span>
-            <span className="sm:hidden">Reset</span>
+            <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-1.5 flex-shrink-0 ${loading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Reload Data</span>
+            <span className="sm:hidden">Reload</span>
           </button>
         </div>
       </div>
