@@ -15,9 +15,12 @@ const transformAPILeadToFrontend = (apiLead: any): Lead => {
   return {
     id: apiLead.id,
     name: apiLead.name,
-    reviews: apiLead.reviews || 0,
+    email: apiLead.email,
     phone: apiLead.phone || '',
+    company: apiLead.company,
     website: apiLead.website || '',
+    status: apiLead.status,
+    reviews: apiLead.reviews || 0,
     contacted: apiLead.contacted === 1 || apiLead.contacted === true,
     callLogs: [], // Call logs will be managed separately
     createdAt: new Date(apiLead.created_at),
@@ -51,9 +54,12 @@ const transformLeadForAPI = (lead: Lead, fieldsToUpdate?: string[]) => {
   } else {
     // Include all fields for complete updates
     apiData.name = lead.name;
-    apiData.reviews = lead.reviews;
+    apiData.email = lead.email;
     apiData.phone = lead.phone;
+    apiData.company = lead.company;
     apiData.website = lead.website;
+    apiData.status = lead.status;
+    apiData.reviews = lead.reviews;
     apiData.contacted = lead.contacted;
     apiData.city = lead.city === 'Unknown' ? null : lead.city;
     apiData.follow_up_at = lead.follow_up_at;
@@ -148,12 +154,14 @@ const createLeadAPI = async (leadData: Partial<Lead>) => {
       },
       body: JSON.stringify({
         name: leadData.name,
+        email: leadData.email,
         phone: leadData.phone || '',
+        company: leadData.company,
         website: leadData.website || '',
+        status: leadData.status || 'New',
+        notes: leadData.notes,
         reviews: leadData.reviews || 0,
         contacted: leadData.contacted || false,
-        city: leadData.city,
-        notes: leadData.notes,
       }),
     });
 

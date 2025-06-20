@@ -40,7 +40,7 @@ const LeadsList: React.FC = () => {
     return (
       <div className="w-full bg-white rounded-lg shadow-md p-6 sm:p-8 text-center">
         <p className="text-gray-600 text-base sm:text-lg">No leads found matching your criteria.</p>
-        <p className="text-gray-500 mt-2 text-sm sm:text-base">Try adjusting your filters.</p>
+        <p className="text-gray-500 mt-2 text-sm sm:text-base">Try adjusting your filters or add a new lead.</p>
       </div>
     );
   }
@@ -80,6 +80,9 @@ const LeadsList: React.FC = () => {
               </th>
               <th className="text-left p-3 lg:p-4 font-semibold text-gray-700 text-sm">
                 Call History
+              </th>
+              <th className="text-left p-3 lg:p-4 font-semibold text-gray-700 text-sm">
+                Actions
               </th>
             </tr>
           </thead>

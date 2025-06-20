@@ -1,8 +1,9 @@
 import React, { forwardRef, useState } from "react";
-import { ExternalLink, Phone, Check, MessageSquare, Calendar, X, ChevronDown, ChevronUp, Clock, AlertTriangle, Edit, Save, MoreHorizontal } from "lucide-react";
+import { ExternalLink, Phone, Check, MessageSquare, Calendar, X, ChevronDown, ChevronUp, Clock, AlertTriangle, Edit, Save, MoreHorizontal, Trash2, Pencil } from "lucide-react";
 import StarRating from "./StarRating";
 import { Lead, CallLog } from "../types";
 import { useLeadContext } from "../contexts/LeadContext";
+import LeadFormDialog from "./LeadFormDialog";
 
 interface LeadItemProps {
   lead: Lead;
@@ -10,15 +11,17 @@ interface LeadItemProps {
 }
 
 const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }, ref) => {
-  const { setLastCalledIndex, toggleContactStatus, addCallLog, updateCallLog } = useLeadContext();
+  const { setLastCalledIndex, toggleContactStatus, addCallLog, updateCallLog, deleteLead } = useLeadContext();
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [showAllLogs, setShowAllLogs] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState('');
   const [editOutcome, setEditOutcome] = useState<CallLog['outcome']>('follow_up_1_day');
   const [callOutcome, setCallOutcome] = useState<CallLog['outcome']>('follow_up_1_day');
   const [callNotes, setCallNotes] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const handleCallLogClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -28,6 +31,25 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
 
   const handleRowClick = () => {
     toggleContactStatus(lead.id);
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowEditDialog(true);
+  };
+
+  const handleDeleteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to delete "${lead.name}"?`)) {
+      setDeleting(true);
+      try {
+        await deleteLead(lead.id);
+      } catch (error) {
+        console.error('Failed to delete lead:', error);
+      } finally {
+        setDeleting(false);
+      }
+    }
   };
 
   const handleSubmitCallLog = () => {
@@ -101,6 +123,23 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
     }
   };
 
+  const getStatusColor = (status: Lead['status']) => {
+    switch (status) {
+      case 'New':
+        return 'bg-blue-100 text-blue-800';
+      case 'Contacted':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Qualified':
+        return 'bg-green-100 text-green-800';
+      case 'Converted':
+        return 'bg-purple-100 text-purple-800';
+      case 'Lost':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const getNextFollowUp = () => {
     if (!lead.callLogs || lead.callLogs.length === 0) return null;
     
@@ -125,7 +164,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
   // Mobile card layout
   const MobileCard = () => (
     <div 
-      className={`cursor-pointer transition-colors ${lead.contacted ? "bg-green-50/50" : "bg-white"} ${isFollowUpDue ? "border-l-4 border-orange-400" : ""}`}
+      className={`cursor-pointer transition-colors ${lead.contacted ? "bg-green-50/50" : "bg-white"} ${isFollowUpDue ? "border-l-4 border-orange-400" : ""} ${deleting ? "opacity-50" : ""}`}
       onClick={handleRowClick}
     >
       <div className="flex items-start justify-between mb-3">
@@ -138,10 +177,32 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
               {lead.name}
               {isFollowUpDue && <AlertTriangle className="w-4 h-4 text-orange-500" />}
             </div>
-            <div className="mt-1">
+            <div className="mt-1 flex items-center gap-2">
               <StarRating reviews={lead.reviews} />
+              {lead.status && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
+                  {lead.status}
+                </span>
+              )}
             </div>
           </div>
+        </div>
+        <div className="flex gap-1 ml-2">
+          <button
+            onClick={handleEditClick}
+            className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            title="Edit Lead"
+          >
+            <Pencil className="w-3 h-3" />
+          </button>
+          <button
+            onClick={handleDeleteClick}
+            disabled={deleting}
+            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+            title="Delete Lead"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
         </div>
       </div>
       
@@ -168,21 +229,23 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
           </div>
         )}
         
-        <a 
-          href={lead.website} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="flex items-center text-blue-600 font-medium hover:text-blue-800 transition-colors text-sm"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ExternalLink className="w-4 h-4 mr-2 flex-shrink-0" />
-          <span className="border-b border-blue-300 hover:border-blue-600 truncate">Visit Website</span>
-        </a>
+        {lead.website && (
+          <a 
+            href={lead.website} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="flex items-center text-blue-600 font-medium hover:text-blue-800 transition-colors text-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="border-b border-blue-300 hover:border-blue-600 truncate">Visit Website</span>
+          </a>
+        )}
 
         {/* Latest Notes Preview */}
-        {latestNote && (
+        {(latestNote || lead.notes) && (
           <div className="text-sm bg-gray-50 p-2 rounded">
-            <p className="text-gray-700 text-xs line-clamp-2">{latestNote}</p>
+            <p className="text-gray-700 text-xs line-clamp-2">{latestNote || lead.notes}</p>
           </div>
         )}
 
@@ -299,7 +362,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
     <>
       <tr 
         ref={ref} 
-        className={`border-b transition-colors cursor-pointer hover:bg-blue-50 ${lead.contacted ? "bg-green-50/50" : "bg-white"} ${isFollowUpDue ? "border-l-4 border-orange-400" : ""}`} 
+        className={`border-b transition-colors cursor-pointer hover:bg-blue-50 ${lead.contacted ? "bg-green-50/50" : "bg-white"} ${isFollowUpDue ? "border-l-4 border-orange-400" : ""} ${deleting ? "opacity-50" : ""}`} 
         onClick={handleRowClick}
       >
         <td className="p-3 lg:p-4">
@@ -312,6 +375,11 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                 {lead.name}
                 {isFollowUpDue && <AlertTriangle className="w-4 h-4 text-orange-500" />}
               </div>
+              {lead.status && (
+                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${getStatusColor(lead.status)}`}>
+                  {lead.status}
+                </span>
+              )}
             </div>
           </div>
         </td>
@@ -337,16 +405,20 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
           )}
         </td>
         <td className="p-3 lg:p-4">
-          <a 
-            href={lead.website} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="flex items-center text-blue-600 font-medium hover:text-blue-800 transition-colors text-sm" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ExternalLink className="w-4 h-4 mr-1.5" />
-            <span className="border-b border-blue-300 hover:border-blue-600">Visit Website</span>
-          </a>
+          {lead.website ? (
+            <a 
+              href={lead.website} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex items-center text-blue-600 font-medium hover:text-blue-800 transition-colors text-sm" 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink className="w-4 h-4 mr-1.5" />
+              <span className="border-b border-blue-300 hover:border-blue-600">Visit Website</span>
+            </a>
+          ) : (
+            <span className="text-gray-400 text-sm">No website</span>
+          )}
         </td>
         <td className="p-3 lg:p-4">
           <div className="flex items-center gap-2">
@@ -381,11 +453,30 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                 {showCallHistory ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
               </button>
             )}
-            {latestNote && (
+            {(latestNote || lead.notes) && (
               <div className="text-xs text-gray-600 max-w-xs truncate">
-                {latestNote}
+                {latestNote || lead.notes}
               </div>
             )}
+          </div>
+        </td>
+        <td className="p-3 lg:p-4">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleEditClick}
+              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="Edit Lead"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleDeleteClick}
+              disabled={deleting}
+              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+              title="Delete Lead"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
         </td>
       </tr>
@@ -393,7 +484,7 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
       {/* Call History Row */}
       {showCallHistory && lead.callLogs && lead.callLogs.length > 0 && (
         <tr className="bg-gray-50">
-          <td colSpan={6} className="p-3 lg:p-4">
+          <td colSpan={7} className="p-3 lg:p-4">
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <h4 className="font-medium text-sm text-gray-700">Call History</h4>
@@ -561,6 +652,14 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
           </div>
         </div>
       )}
+
+      {/* Edit Lead Dialog */}
+      <LeadFormDialog
+        open={showEditDialog}
+        onClose={() => setShowEditDialog(false)}
+        onSuccess={() => setShowEditDialog(false)}
+        lead={lead}
+      />
     </>
   );
 });

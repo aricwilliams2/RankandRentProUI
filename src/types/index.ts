@@ -1,4 +1,73 @@
-// Core Types
+export interface CallLog {
+  id: string;
+  leadId: string;
+  outcome: "follow_up_1_day" | "follow_up_72_hours" | "follow_up_next_week" | "follow_up_next_month" | "follow_up_3_months";
+  notes: string;
+  callDate: Date;
+  duration?: number; // in seconds
+  nextFollowUp: string | null;
+}
+
+export interface Lead {
+  id: string;
+  name: string;
+  email?: string;
+  phone: string;
+  company?: string;
+  website: string;
+  status?: "New" | "Contacted" | "Qualified" | "Converted" | "Lost";
+  reviews: number;
+  contacted: boolean;
+  city?: string | null;
+  follow_up_at?: string | null;
+  notes?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  callLogs: CallLog[];
+}
+
+export interface AreaData {
+  id: string;
+  name: string;
+  leads: Lead[];
+}
+
+export interface Filters {
+  showContactedOnly: boolean;
+}
+
+export type SortField = "name" | "reviews" | "phone" | "website";
+export type SortDirection = "asc" | "desc";
+
+export interface LeadContextType {
+  leads: Lead[];
+  setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
+  lastCalledIndex: number | null;
+  setLastCalledIndex: React.Dispatch<React.SetStateAction<number | null>>;
+  toggleContactStatus: (id: string) => void;
+  clearCache: () => void;
+  filters: Filters;
+  setFilters: React.Dispatch<React.SetStateAction<Filters>>;
+  filteredLeads: Lead[];
+  areas: AreaData[];
+  currentArea: string;
+  setCurrentArea: (areaId: string) => void;
+  sortField: SortField | null;
+  setSortField: React.Dispatch<React.SetStateAction<SortField | null>>;
+  sortDirection: SortDirection;
+  setSortDirection: React.Dispatch<React.SetStateAction<SortDirection>>;
+  handleSort: (field: SortField) => void;
+  addCallLog: (leadId: string, callLog: Omit<CallLog, "id" | "leadId" | "callDate">) => void;
+  updateCallLog: (leadId: string, callLogId: string, updateData: Partial<Pick<CallLog, "outcome" | "notes">>) => void;
+  loading: boolean;
+  error: string | null;
+  // New CRUD functions
+  createLead: (leadData: Partial<Lead>) => Promise<Lead>;
+  updateLead: (leadId: string, updateData: Partial<Lead>) => Promise<Lead | undefined>;
+  deleteLead: (leadId: string) => Promise<boolean>;
+}
+
+// Core Types for other parts of the app
 export interface Client {
   id: string;
   name: string;
@@ -21,31 +90,6 @@ export interface Website {
   seoMetrics: SEOMetrics;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface CallLog {
-  id: string;
-  leadId: string;
-  outcome: "follow_up_1_day" | "follow_up_72_hours" | "follow_up_next_week" | "follow_up_next_month" | "follow_up_3_months";
-  notes: string;
-  callDate: Date;
-  duration?: number; // in seconds
-  nextFollowUp: string | null;
-}
-
-export interface Lead {
-  id: string;
-  name: string;
-  reviews: number;
-  phone: string;
-  website: string;
-  contacted: boolean;
-  city?: string | null;
-  follow_up_at?: string | null;
-  notes?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  callLogs: CallLog[];
 }
 
 export interface PhoneNumber {
@@ -263,45 +307,4 @@ export interface CompetitorInsights {
 export interface SerpInsights {
   competitors: SerpCompetitor[];
   raw: any;
-}
-
-export interface AreaData {
-  id: string;
-  name: string;
-  leads: Lead[];
-}
-
-export interface Filters {
-  showContactedOnly: boolean;
-}
-
-export type SortField = "name" | "reviews" | "phone" | "website";
-export type SortDirection = "asc" | "desc";
-
-export interface LeadContextType {
-  leads: Lead[];
-  setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
-  lastCalledIndex: number | null;
-  setLastCalledIndex: React.Dispatch<React.SetStateAction<number | null>>;
-  toggleContactStatus: (id: string) => void;
-  clearCache: () => void;
-  filters: Filters;
-  setFilters: React.Dispatch<React.SetStateAction<Filters>>;
-  filteredLeads: Lead[];
-  areas: AreaData[];
-  currentArea: string;
-  setCurrentArea: (areaId: string) => void;
-  sortField: SortField | null;
-  setSortField: React.Dispatch<React.SetStateAction<SortField | null>>;
-  sortDirection: SortDirection;
-  setSortDirection: React.Dispatch<React.SetStateAction<SortDirection>>;
-  handleSort: (field: SortField) => void;
-  addCallLog: (leadId: string, callLog: Omit<CallLog, "id" | "leadId" | "callDate">) => void;
-  updateCallLog: (leadId: string, callLogId: string, updateData: Partial<Pick<CallLog, "outcome" | "notes">>) => void;
-  loading: boolean;
-  error: string | null;
-  // New CRUD functions
-  createLead: (leadData: Partial<Lead>) => Promise<Lead>;
-  updateLead: (leadId: string, updateData: Partial<Lead>) => Promise<Lead | undefined>;
-  deleteLead: (leadId: string) => Promise<boolean>;
 }
