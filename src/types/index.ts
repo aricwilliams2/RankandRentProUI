@@ -300,4 +300,8 @@ export interface LeadContextType {
   updateCallLog: (leadId: string, callLogId: string, updateData: Partial<Pick<CallLog, "outcome" | "notes">>) => void;
   loading: boolean;
   error: string | null;
+  // New CRUD functions
+  createLead: (leadData: Partial<Lead>) => Promise<Lead>;
+  updateLead: (leadId: string, updateData: Partial<Lead>) => Promise<Lead | undefined>;
+  deleteLead: (leadId: string) => Promise<boolean>;
 }

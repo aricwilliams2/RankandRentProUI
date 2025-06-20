@@ -15,10 +15,10 @@ const transformAPILeadToFrontend = (apiLead: any): Lead => {
   return {
     id: apiLead.id,
     name: apiLead.name,
-    reviews: apiLead.reviews,
-    phone: apiLead.phone,
-    website: apiLead.website,
-    contacted: apiLead.contacted === 1,
+    reviews: apiLead.reviews || 0,
+    phone: apiLead.phone || '',
+    website: apiLead.website || '',
+    contacted: apiLead.contacted === 1 || apiLead.contacted === true,
     callLogs: [], // Call logs will be managed separately
     createdAt: new Date(apiLead.created_at),
     updatedAt: new Date(apiLead.updated_at),
@@ -29,19 +29,38 @@ const transformAPILeadToFrontend = (apiLead: any): Lead => {
 };
 
 // Transform lead data for API (frontend -> backend format)
-const transformLeadForAPI = (lead: Lead) => {
-  return {
-    id: lead.id,
-    name: lead.name,
-    reviews: lead.reviews,
-    phone: lead.phone,
-    website: lead.website,
-    contacted: lead.contacted ? 1 : 0,
-    follow_up_at: lead.follow_up_at,
-    notes: lead.notes,
-    created_at: lead.createdAt?.toISOString() || new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+const transformLeadForAPI = (lead: Lead, fieldsToUpdate?: string[]) => {
+  const apiData: any = {};
+  
+  // If specific fields are provided, only include those
+  if (fieldsToUpdate) {
+    fieldsToUpdate.forEach(field => {
+      switch (field) {
+        case 'contacted':
+          apiData.contacted = lead.contacted;
+          break;
+        case 'notes':
+          apiData.notes = lead.notes;
+          break;
+        case 'follow_up_at':
+          apiData.follow_up_at = lead.follow_up_at;
+          break;
+        // Add other fields as needed
+      }
+    });
+  } else {
+    // Include all fields for complete updates
+    apiData.name = lead.name;
+    apiData.reviews = lead.reviews;
+    apiData.phone = lead.phone;
+    apiData.website = lead.website;
+    apiData.contacted = lead.contacted;
+    apiData.city = lead.city === 'Unknown' ? null : lead.city;
+    apiData.follow_up_at = lead.follow_up_at;
+    apiData.notes = lead.notes;
+  }
+
+  return apiData;
 };
 
 // API call to fetch leads with pagination support
@@ -53,6 +72,7 @@ const fetchLeadsAPI = async (): Promise<Lead[]> => {
 
     // Fetch all pages if there are multiple
     while (hasMorePages) {
+      console.log(`Fetching leads page ${currentPage}...`);
       const response = await fetch(`${API_BASE_URL}/leads?page=${currentPage}`, {
         method: "GET",
         headers: {
@@ -66,6 +86,7 @@ const fetchLeadsAPI = async (): Promise<Lead[]> => {
       }
 
       const paginatedResponse = await response.json();
+      console.log(`Page ${currentPage} response:`, paginatedResponse);
       
       // Extract leads from the 'data' property
       const pageLeads = paginatedResponse.data.map(transformAPILeadToFrontend);
@@ -76,6 +97,7 @@ const fetchLeadsAPI = async (): Promise<Lead[]> => {
       currentPage++;
     }
 
+    console.log(`Total leads fetched: ${allLeads.length}`);
     return allLeads;
   } catch (error) {
     console.error("Failed to fetch leads from API:", error);
@@ -84,11 +106,13 @@ const fetchLeadsAPI = async (): Promise<Lead[]> => {
 };
 
 // API call to update lead
-const updateLeadAPI = async (lead: Lead) => {
+const updateLeadAPI = async (lead: Lead, fieldsToUpdate?: string[]) => {
   try {
-    const leadData = transformLeadForAPI(lead);
+    const leadData = transformLeadForAPI(lead, fieldsToUpdate);
+    console.log(`Updating lead ${lead.id} with data:`, leadData);
+    
     const response = await fetch(`${API_BASE_URL}/leads/${lead.id}`, {
-      method: "PUT",
+      method: "PUT", // Laravel API uses PUT for updates
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -97,12 +121,80 @@ const updateLeadAPI = async (lead: Lead) => {
     });
 
     if (!response.ok) {
+      const errorData = await response.json();
+      console.error("API Error Response:", errorData);
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
 
-    return await response.json();
+    const updatedData = await response.json();
+    console.log("Update successful:", updatedData);
+    return updatedData;
   } catch (error) {
     console.error("Failed to update lead via API:", error);
+    throw error;
+  }
+};
+
+// API call to create a new lead
+const createLeadAPI = async (leadData: Partial<Lead>) => {
+  try {
+    console.log("Creating new lead with data:", leadData);
+    
+    const response = await fetch(`${API_BASE_URL}/leads`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        name: leadData.name,
+        phone: leadData.phone || '',
+        website: leadData.website || '',
+        reviews: leadData.reviews || 0,
+        contacted: leadData.contacted || false,
+        city: leadData.city,
+        notes: leadData.notes,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("API Error Response:", errorData);
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+
+    const newLead = await response.json();
+    console.log("Create successful:", newLead);
+    return transformAPILeadToFrontend(newLead);
+  } catch (error) {
+    console.error("Failed to create lead via API:", error);
+    throw error;
+  }
+};
+
+// API call to delete a lead
+const deleteLeadAPI = async (leadId: string) => {
+  try {
+    console.log(`Deleting lead ${leadId}...`);
+    
+    const response = await fetch(`${API_BASE_URL}/leads/${leadId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("API Error Response:", errorData);
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+
+    console.log(`Lead ${leadId} deleted successfully`);
+    return true;
+  } catch (error) {
+    console.error("Failed to delete lead via API:", error);
     throw error;
   }
 };
@@ -245,8 +337,8 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedLead = { ...lead, contacted: !lead.contacted };
 
     try {
-      // Update API first
-      await updateLeadAPI(updatedLead);
+      // Update API first - only send the contacted field
+      await updateLeadAPI(updatedLead, ['contacted']);
 
       // Update local state on success
       setAllLeads((prevLeads) => prevLeads.map((lead) => (lead.id === id ? updatedLead : lead)));
@@ -273,11 +365,12 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...lead,
       callLogs: [...(lead.callLogs || []), newCallLog],
       contacted: true, // Mark as contacted when a call is logged
+      notes: callLogData.notes, // Update notes from call log
     };
 
     try {
-      // Update API first (just the contacted status)
-      await updateLeadAPI(updatedLead);
+      // Update API first - send contacted status and notes
+      await updateLeadAPI(updatedLead, ['contacted', 'notes']);
 
       // Update local state on success
       setAllLeads((prevLeads) => prevLeads.map((lead) => (lead.id === leadId ? updatedLead : lead)));
@@ -304,11 +397,15 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             : log
         ) || [],
+      notes: updateData.notes || lead.notes, // Update lead notes if provided
     };
 
     try {
-      // Update API first (contacted status might change)
-      await updateLeadAPI(updatedLead);
+      // Update API first - send notes if they were updated
+      const fieldsToUpdate = updateData.notes ? ['notes'] : [];
+      if (fieldsToUpdate.length > 0) {
+        await updateLeadAPI(updatedLead, fieldsToUpdate);
+      }
 
       // Update local state on success
       setAllLeads((prevLeads) => prevLeads.map((lead) => (lead.id === leadId ? updatedLead : lead)));
@@ -344,6 +441,50 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Create a new lead
+  const createLead = async (leadData: Partial<Lead>) => {
+    try {
+      setError(null);
+      const newLead = await createLeadAPI(leadData);
+      setAllLeads((prevLeads) => [...prevLeads, newLead]);
+      return newLead;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to create lead");
+      throw error;
+    }
+  };
+
+  // Delete a lead
+  const deleteLead = async (leadId: string) => {
+    try {
+      setError(null);
+      await deleteLeadAPI(leadId);
+      setAllLeads((prevLeads) => prevLeads.filter((lead) => lead.id !== leadId));
+      return true;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to delete lead");
+      throw error;
+    }
+  };
+
+  // Update a lead
+  const updateLead = async (leadId: string, updateData: Partial<Lead>) => {
+    const lead = allLeads.find((l) => l.id === leadId);
+    if (!lead) return;
+
+    const updatedLead = { ...lead, ...updateData };
+
+    try {
+      setError(null);
+      await updateLeadAPI(updatedLead);
+      setAllLeads((prevLeads) => prevLeads.map((lead) => (lead.id === leadId ? updatedLead : lead)));
+      return updatedLead;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to update lead");
+      throw error;
+    }
+  };
+
   // Clear cache and reload from API
   const clearCache = async () => {
     localStorage.removeItem(`lastCalledIndex_${currentArea}`);
@@ -351,13 +492,13 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       setLoading(true);
+      setError(null);
       const apiLeads = await fetchLeadsAPI();
       setAllLeads(apiLeads);
       setLastCalledIndex(null);
       setFilters(initialFilters);
       setSortField("reviews");
       setSortDirection("desc");
-      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to reload leads");
     } finally {
@@ -450,6 +591,10 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateCallLog,
         loading,
         error,
+        // New CRUD functions
+        createLead,
+        updateLead,
+        deleteLead,
       }}
     >
       {children}
