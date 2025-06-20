@@ -33,14 +33,14 @@ export interface CallLog {
   nextFollowUp: string | null;
 }
 
-interface Lead {
+export interface Lead {
   id: string;
   name: string;
   reviews: number;
   phone: string;
   website: string;
   contacted: boolean;
-  city?: string;
+  city?: string | null;
   follow_up_at?: string | null;
   notes?: string | null;
   createdAt: Date;
@@ -281,9 +281,23 @@ export type SortDirection = "asc" | "desc";
 export interface LeadContextType {
   leads: Lead[];
   setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
+  lastCalledIndex: number | null;
+  setLastCalledIndex: React.Dispatch<React.SetStateAction<number | null>>;
+  toggleContactStatus: (id: string) => void;
+  clearCache: () => void;
+  filters: Filters;
+  setFilters: React.Dispatch<React.SetStateAction<Filters>>;
+  filteredLeads: Lead[];
+  areas: AreaData[];
+  currentArea: string;
+  setCurrentArea: (areaId: string) => void;
+  sortField: SortField | null;
+  setSortField: React.Dispatch<React.SetStateAction<SortField | null>>;
+  sortDirection: SortDirection;
+  setSortDirection: React.Dispatch<React.SetStateAction<SortDirection>>;
+  handleSort: (field: SortField) => void;
+  addCallLog: (leadId: string, callLog: Omit<CallLog, "id" | "leadId" | "callDate">) => void;
+  updateCallLog: (leadId: string, callLogId: string, updateData: Partial<Pick<CallLog, "outcome" | "notes">>) => void;
   loading: boolean;
   error: string | null;
-  updateLead: (lead: Lead) => Promise<Lead>;
-  createLead: (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => Promise<Lead>;
-  deleteLead: (id: string) => Promise<void>;
 }

@@ -19,12 +19,12 @@ const transformAPILeadToFrontend = (apiLead: any): Lead => {
     phone: apiLead.phone,
     website: apiLead.website,
     contacted: apiLead.contacted === 1,
-    callLogs: [],
+    callLogs: [], // Call logs will be managed separately
     createdAt: new Date(apiLead.created_at),
     updatedAt: new Date(apiLead.updated_at),
-    city: apiLead.city,
-    follow_up_at: apiLead.follow_up_at ?? null,
-    notes: apiLead.notes ?? null,
+    city: apiLead.city || 'Unknown', // Handle null city
+    follow_up_at: apiLead.follow_up_at,
+    notes: apiLead.notes,
   };
 };
 
@@ -37,30 +37,46 @@ const transformLeadForAPI = (lead: Lead) => {
     phone: lead.phone,
     website: lead.website,
     contacted: lead.contacted ? 1 : 0,
-    follow_up_at: lead.follow_up_at, // Handled through call logs now
-    notes: lead.notes, // Handled through call logs now
+    follow_up_at: lead.follow_up_at,
+    notes: lead.notes,
     created_at: lead.createdAt?.toISOString() || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 };
 
-// API call to fetch leads
+// API call to fetch leads with pagination support
 const fetchLeadsAPI = async (): Promise<Lead[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/leads`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-    });
+    let allLeads: Lead[] = [];
+    let currentPage = 1;
+    let hasMorePages = true;
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    // Fetch all pages if there are multiple
+    while (hasMorePages) {
+      const response = await fetch(`${API_BASE_URL}/leads?page=${currentPage}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
+      const paginatedResponse = await response.json();
+      
+      // Extract leads from the 'data' property
+      const pageLeads = paginatedResponse.data.map(transformAPILeadToFrontend);
+      allLeads = [...allLeads, ...pageLeads];
+
+      // Check if there are more pages
+      hasMorePages = paginatedResponse.next_page_url !== null;
+      currentPage++;
     }
 
-    const apiLeads = await response.json();
-    return apiLeads.map(transformAPILeadToFrontend);
+    return allLeads;
   } catch (error) {
     console.error("Failed to fetch leads from API:", error);
     throw error;
@@ -115,7 +131,7 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Create areas from API data (group by city)
   const areas = useMemo<AreaData[]>(() => {
     const cityGroups = allLeads.reduce((acc, lead) => {
-      const city = (lead as any).city || "Unknown";
+      const city = lead.city || 'Unknown';
       if (!acc[city]) {
         acc[city] = [];
       }
@@ -165,9 +181,9 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Set default area if not set
         if (!currentArea && leadsWithCallLogs.length > 0) {
-          const firstCity = (leadsWithCallLogs[0] as any).city;
-          if (firstCity) {
-            const firstAreaId = firstCity.toLowerCase().replace(/\s+/g, "-");
+          const firstLead = leadsWithCallLogs[0];
+          if (firstLead.city) {
+            const firstAreaId = firstLead.city.toLowerCase().replace(/\s+/g, "-");
             setCurrentAreaState(firstAreaId);
           }
         }
@@ -179,7 +195,7 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     loadLeads();
-  }, []);
+  }, [currentArea]);
 
   // Set current area and update localStorage
   const setCurrentArea = (areaId: string) => {
@@ -202,7 +218,6 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentArea]);
 
-  // Save call logs to localStorage whenever they change
   // Save call logs to localStorage whenever they change
   useEffect(() => {
     const callLogsMap = allLeads.reduce((acc, lead) => {
@@ -304,28 +319,28 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Helper function to calculate next follow-up date based on outcome
-  const calculateNextFollowUp = (outcome: CallLog["outcome"]): Date | undefined => {
+  const calculateNextFollowUp = (outcome: CallLog["outcome"]): string => {
     const now = new Date();
     const nextDate = new Date(now);
 
     switch (outcome) {
       case "follow_up_1_day":
         nextDate.setDate(now.getDate() + 1);
-        return nextDate;
+        return nextDate.toISOString();
       case "follow_up_72_hours":
         nextDate.setDate(now.getDate() + 3);
-        return nextDate;
+        return nextDate.toISOString();
       case "follow_up_next_week":
         nextDate.setDate(now.getDate() + 7);
-        return nextDate;
+        return nextDate.toISOString();
       case "follow_up_next_month":
         nextDate.setMonth(now.getMonth() + 1);
-        return nextDate;
+        return nextDate.toISOString();
       case "follow_up_3_months":
         nextDate.setMonth(now.getMonth() + 3);
-        return nextDate;
+        return nextDate.toISOString();
       default:
-        return undefined;
+        return "";
     }
   };
 
