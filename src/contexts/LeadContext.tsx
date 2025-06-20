@@ -33,12 +33,13 @@ const transformLeadForAPI = (lead: Lead) => {
   return {
     id: lead.id,
     name: lead.name,
+    city: lead.city === 'Unknown' ? null : lead.city, // Handle 'Unknown' city
     reviews: lead.reviews,
     phone: lead.phone,
     website: lead.website,
     contacted: lead.contacted ? 1 : 0,
-    follow_up_at: lead.follow_up_at,
-    notes: lead.notes,
+    follow_up_at: lead.follow_up_at || null,
+    notes: lead.notes || null,
     created_at: lead.createdAt?.toISOString() || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -83,12 +84,14 @@ const fetchLeadsAPI = async (): Promise<Lead[]> => {
   }
 };
 
-// API call to update lead
+// API call to update lead using POST method
 const updateLeadAPI = async (lead: Lead) => {
   try {
     const leadData = transformLeadForAPI(lead);
+    console.log('Updating lead with data:', leadData); // Debug log
+    
     const response = await fetch(`${API_BASE_URL}/leads/${lead.id}`, {
-      method: "PUT",
+      method: "POST", // Changed from PUT to POST
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
