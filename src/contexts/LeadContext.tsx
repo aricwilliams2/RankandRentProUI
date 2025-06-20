@@ -203,6 +203,7 @@ export const LeadProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentArea]);
 
   // Save call logs to localStorage whenever they change
+  // Save call logs to localStorage whenever they change
   useEffect(() => {
     const callLogsMap = allLeads.reduce((acc, lead) => {
       if (lead.callLogs && lead.callLogs.length > 0) {
