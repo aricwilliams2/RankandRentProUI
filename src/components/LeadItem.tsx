@@ -1,5 +1,5 @@
 import React, { forwardRef, useState } from "react";
-import { ExternalLink, Phone, Check, MessageSquare, Calendar, X, ChevronDown, ChevronUp, Clock, AlertTriangle, Edit, Save, MoreHorizontal, Trash2, Pencil } from "lucide-react";
+import { ExternalLink, Phone, Check, MessageSquare, Calendar, X, ChevronDown, ChevronUp, Clock, AlertTriangle, Edit, Save, MoreHorizontal, Trash2, Pencil, MapPin } from "lucide-react";
 import StarRating from "./StarRating";
 import { Lead, CallLog } from "../types";
 import { useLeadContext } from "../contexts/LeadContext";
@@ -177,12 +177,18 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
               {lead.name}
               {isFollowUpDue && <AlertTriangle className="w-4 h-4 text-orange-500" />}
             </div>
-            <div className="mt-1 flex items-center gap-2">
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
               <StarRating reviews={lead.reviews} />
               {lead.status && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
                   {lead.status}
                 </span>
+              )}
+              {lead.city && lead.city !== 'Unknown' && (
+                <div className="flex items-center gap-1 text-xs text-gray-600">
+                  <MapPin className="w-3 h-3" />
+                  <span>{lead.city}</span>
+                </div>
               )}
             </div>
           </div>
@@ -379,6 +385,12 @@ const LeadItem = forwardRef<HTMLTableRowElement, LeadItemProps>(({ lead, index }
                 <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${getStatusColor(lead.status)}`}>
                   {lead.status}
                 </span>
+              )}
+              {lead.city && lead.city !== 'Unknown' && (
+                <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
+                  <MapPin className="w-3 h-3" />
+                  <span>{lead.city}</span>
+                </div>
               )}
             </div>
           </div>

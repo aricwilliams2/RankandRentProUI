@@ -21,6 +21,7 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onClose, onSucces
     phone: '',
     company: '',
     website: '',
+    city: '',
     status: 'New' as Lead['status'],
     reviews: 0,
     notes: '',
@@ -35,6 +36,7 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onClose, onSucces
         phone: lead.phone,
         company: lead.company || '',
         website: lead.website,
+        city: lead.city === 'Unknown' ? '' : (lead.city || ''),
         status: lead.status || 'New',
         reviews: lead.reviews,
         notes: lead.notes || '',
@@ -47,6 +49,7 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onClose, onSucces
         phone: '',
         company: '',
         website: '',
+        city: '',
         status: 'New',
         reviews: 0,
         notes: '',
@@ -69,12 +72,18 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onClose, onSucces
     setError(null);
 
     try {
+      // Prepare the data, handling empty city
+      const submitData = {
+        ...formData,
+        city: formData.city.trim() || null, // Send null if empty
+      };
+
       if (lead) {
         // Update existing lead
-        await updateLead(lead.id, formData);
+        await updateLead(lead.id, submitData);
       } else {
         // Create new lead
-        await createLead(formData);
+        await createLead(submitData);
       }
       onSuccess();
     } catch (err) {
@@ -179,6 +188,20 @@ const LeadFormDialog: React.FC<LeadFormDialogProps> = ({ open, onClose, onSucces
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="https://greencityhaul.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                City
+              </label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., Greensboro, Miami, Orlando"
               />
             </div>
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { useLeadContext } from "../contexts/LeadContext";
-import { Map, AlertCircle } from "lucide-react";
+import { MapPin, AlertCircle, Filter } from "lucide-react";
 
 const AreaSelector: React.FC = () => {
   const { areas, currentArea, setCurrentArea, loading, error } = useLeadContext();
@@ -9,7 +9,7 @@ const AreaSelector: React.FC = () => {
     return (
       <div className="mb-4 sm:mb-6 bg-white rounded-lg shadow-md p-3 sm:p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Map className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+          <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
           <h2 className="font-semibold text-gray-800 text-sm sm:text-base">Loading Cities...</h2>
         </div>
         <div className="animate-pulse">
@@ -39,10 +39,10 @@ const AreaSelector: React.FC = () => {
     return (
       <div className="mb-4 sm:mb-6 bg-white rounded-lg shadow-md p-3 sm:p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Map className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
+          <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
           <h2 className="font-semibold text-gray-600 text-sm sm:text-base">No Cities Available</h2>
         </div>
-        <p className="text-gray-500 text-sm">No leads found. Please check your API connection.</p>
+        <p className="text-gray-500 text-sm">No leads found. Please check your API connection or add some leads.</p>
       </div>
     );
   }
@@ -50,24 +50,52 @@ const AreaSelector: React.FC = () => {
   return (
     <div className="mb-4 sm:mb-6 bg-white rounded-lg shadow-md p-3 sm:p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Map className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-        <h2 className="font-semibold text-gray-800 text-sm sm:text-base">Select City</h2>
+        <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+        <h2 className="font-semibold text-gray-800 text-sm sm:text-base">Filter by City</h2>
+        <span className="text-xs text-gray-500">({areas.length} cities)</span>
       </div>
+      
+      <div className="mb-3">
+        <p className="text-xs text-gray-600">Click a city button below to filter leads by location:</p>
+      </div>
+      
       <div className="flex flex-wrap gap-1.5 sm:gap-2">
         {areas.map((area) => (
           <button 
             key={area.id} 
             onClick={() => setCurrentArea(area.id)} 
-            className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${
               currentArea === area.id 
-                ? "bg-blue-600 text-white" 
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                ? "bg-blue-600 text-white shadow-md transform scale-105" 
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:shadow-sm"
             }`}
+            title={`View ${area.leads.length} leads in ${area.name}`}
           >
-            {area.name} ({area.leads.length})
+            <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span>{area.name}</span>
+            <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
+              currentArea === area.id 
+                ? "bg-white/20 text-white" 
+                : "bg-gray-300 text-gray-600"
+            }`}>
+              {area.leads.length}
+            </span>
           </button>
         ))}
       </div>
+      
+      {currentArea && (
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <MapPin className="w-4 h-4 text-blue-600" />
+            <span>
+              Currently showing leads from <span className="font-medium text-gray-800">
+                {areas.find(area => area.id === currentArea)?.name}
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

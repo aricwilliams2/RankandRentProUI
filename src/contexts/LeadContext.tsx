@@ -158,6 +158,7 @@ const createLeadAPI = async (leadData: Partial<Lead>) => {
         phone: leadData.phone || '',
         company: leadData.company,
         website: leadData.website || '',
+        city: leadData.city || null,
         status: leadData.status || 'New',
         notes: leadData.notes,
         reviews: leadData.reviews || 0,
